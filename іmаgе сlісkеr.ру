@@ -27,7 +27,7 @@ BASE_IMAGE_NAME = 'image' # Base name for your images (e.g., 'image.png', 'image
 # Higher values (e.g., 0.95) are stricter, meaning the image on screen must be a very close match.
 # Lower values (e.g., 0.7) are more lenient, allowing for slight variations.
 # Start with 0.8 and adjust if it's not finding the image or finding too many false positives.
-CONFIDENCE_LEVEL = 0.9
+CONFIDENCE_LEVEL = 0.3
 
 # Small delay between screenshot and search operations to prevent 100% CPU usage.
 # This delay applies AFTER a burst of clicks, before the next detection cycle.
@@ -40,7 +40,7 @@ CLICKS_PER_DETECTION = 1
 
 # Small delay between individual clicks within a burst.
 # Set to 0 for fastest possible spamming, but 0.001 can sometimes be more reliable.
-BURST_CLICK_DELAY = 0
+BURST_CLICK_DELAY = 0.001
 
 # If True, when multiple instances of the target image are found, the script will click
 # the one closest to the current mouse cursor position.
@@ -303,7 +303,7 @@ try:
                                 current_template_img_obj,
                                 haystack_image,
                                 confidence=CONFIDENCE_LEVEL,
-                                grayscale=True
+                                grayscale=False
                             ))
 
                             if all_locations:

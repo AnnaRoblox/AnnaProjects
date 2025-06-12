@@ -1,4 +1,4 @@
-# --- ensure you download all needed modules 
+# --- ensure you download all needed modules if you want to do it easily use https://github.com/AnnaRoblox/AnnaProjects/blob/main/python%20module%20installer.bat
 # note: you need to add the image/ images in the same folder with titles like image image1 image2 etc
 import pyautogui
 import keyboard

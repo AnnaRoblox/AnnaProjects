@@ -1,0 +1,405 @@
+# --- ensure you download all needed modules 
+# note: you need to add the image/ images in the same folder with titles like image image1 image2 etc
+import pyautogui
+import keyboard
+import time
+import mss
+from PIL import Image
+import sys
+import os
+import math # Import math for distance calculation
+import tkinter as tk # Import tkinter for the highlighting functionality
+
+# --- Configuration ---
+
+# IMPORTANT: Save your target images (e.g., 'image.png', 'image1.png', 'image2.png', etc.)
+# in the same directory as this script.
+# The script will look for 'image.png' first, then 'image1.png', 'image2.png', and so on.
+# It will cycle through these images in order, attempting to find and click one at a time.
+
+# --- FIX for FileNotFoundError when double-clicking .py ---
+# This constructs the full path to the images based on the script's own directory.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_IMAGE_NAME = 'image' # Base name for your images (e.g., 'image.png', 'image1.png')
+# --- END FIX ---
+
+# Adjust this value (0.0 to 1.0) for better image matching.
+# Higher values (e.g., 0.95) are stricter, meaning the image on screen must be a very close match.
+# Lower values (e.g., 0.7) are more lenient, allowing for slight variations.
+# Start with 0.8 and adjust if it's not finding the image or finding too many false positives.
+CONFIDENCE_LEVEL = 0.9
+
+# Small delay between screenshot and search operations to prevent 100% CPU usage.
+# This delay applies AFTER a burst of clicks, before the next detection cycle.
+# Keep this very low for maximum speed, but be aware of CPU usage.
+LOOP_INTERVAL_AFTER_BURST = 0.0
+
+# Number of clicks to perform each time an image is detected.
+# This will make it click multiple times very rapidly at the same spot.
+CLICKS_PER_DETECTION = 1
+
+# Small delay between individual clicks within a burst.
+# Set to 0 for fastest possible spamming, but 0.001 can sometimes be more reliable.
+BURST_CLICK_DELAY = 0
+
+# If True, when multiple instances of the target image are found, the script will click
+# the one closest to the current mouse cursor position.
+# If False, it will click the first instance found (typically top-leftmost by default of pyautogui).
+CLICK_CLOSEST_TO_CURSOR = True
+
+# DEBUG CONFIGURATION:
+# Set to True to highlight detected images with a red box for debugging.
+DEBUG_MODE = True
+# Duration in milliseconds for the highlight to stay on screen.
+HIGHLIGHT_DURATION_MS = 200 # 200 milliseconds = 0.2 seconds
+
+# NEW: This variable will store the key chosen by the user to activate/deactivate the auto-clicker.
+ACTIVATION_KEY = None 
+
+# --- Global flags for script control ---
+script_running = True
+script_can_proceed = True # Flag: set to False if initial setup (image loading) fails or key assignment fails
+ctrl_active = False # Renamed to be more general for the activation key
+current_image_index = 0 # NEW: Tracks which image in the sequence to look for next
+
+# --- Global Tkinter window and canvas for highlighting ---
+_highlight_root = None
+_highlight_canvas = None
+_highlight_rect = None
+_highlight_after_id = None # To store the ID of the scheduled 'after' event for cancellation
+
+def init_highlighter():
+    """Initializes a single, persistent Tkinter window for drawing highlights."""
+    global _highlight_root, _highlight_canvas, _highlight_rect
+
+    if _highlight_root: # Ensure it's only initialized once
+        return
+
+    _highlight_root = tk.Tk()
+    _highlight_root.overrideredirect(True) # Remove title bar and borders
+    _highlight_root.wm_attributes("-topmost", True) # Always on top
+    _highlight_root.geometry("1x1+0+0") # Start small and off-screen
+
+    # Get the default background color of the Tkinter window
+    # This color will be made transparent using -transparentcolor
+    default_bg = _highlight_root.cget('bg')
+    _highlight_root.wm_attributes("-transparentcolor", default_bg) 
+
+    # Canvas should have the same background color as the root to be transparent
+    _highlight_canvas = tk.Canvas(_highlight_root, bg=default_bg, highlightthickness=0)
+    _highlight_canvas.pack(fill=tk.BOTH, expand=True)
+
+    # Create a red rectangle with thickness 3 (initially at (0,0) with 1x1 size)
+    _highlight_rect = _highlight_canvas.create_rectangle(0, 0, 1, 1, outline='red', width=3)
+    
+    # Initially hide the window by setting its alpha to 0 (fully transparent)
+    _highlight_root.wm_attributes("-alpha", 0.0)
+    # Also withdraw the window to ensure it's not even a tiny dot on screen
+    _highlight_root.withdraw() 
+
+def highlight_region_persistent(x, y, width, height, duration_ms=HIGHLIGHT_DURATION_MS):
+    """
+    Highlights a specified screen region using a persistent Tkinter window.
+    
+    Args:
+        x (int): X-coordinate of the top-left corner.
+        y (int): Y-coordinate of the top-left corner.
+        width (int): Width of the region to highlight.
+        height (int): Height of the region to highlight.
+        duration_ms (int): Duration in milliseconds for the highlight to remain visible.
+    """
+    global _highlight_root, _highlight_canvas, _highlight_rect, _highlight_after_id
+
+    # Ensure highlighter is initialized
+    if not _highlight_root:
+        init_highlighter()
+
+    # Cancel any previously scheduled hiding of the highlight
+    if _highlight_after_id:
+        try:
+            _highlight_root.after_cancel(_highlight_after_id)
+        except tk.TclError:
+            # Catch TclError if the scheduled event has already fired or is invalid
+            pass
+        _highlight_after_id = None
+
+    # Update the window's position and size
+    _highlight_root.geometry(f"{width}x{height}+{x}+{y}")
+    
+    # Update the rectangle's coordinates to fill the canvas
+    _highlight_canvas.coords(_highlight_rect, 0, 0, width, height)
+    
+    # Make the window visible (set its alpha to a non-zero value, e.g., 0.5 for semi-transparent)
+    _highlight_root.wm_attributes("-alpha", 0.5) 
+    
+    # Deiconify the window if it was iconified (hidden)
+    _highlight_root.deiconify() 
+
+    # Schedule the window to become fully transparent (hidden) after the specified duration
+    _highlight_after_id = _highlight_root.after(duration_ms, lambda: _highlight_root.wm_attributes("-alpha", 0.0))
+    
+    # Process Tkinter events to update the display immediately
+    _highlight_root.update_idletasks()
+    _highlight_root.update()
+
+def cleanup_highlighter():
+    """Destroys the Tkinter highlight window when the script exits."""
+    global _highlight_root
+    if _highlight_root:
+        _highlight_root.destroy()
+        _highlight_root = None # Reset for good measure
+
+def get_activation_key():
+    """
+    Prompts the user to press a key and assigns it as the auto-clicker activation key.
+    Returns the name of the pressed key, or None if the script should exit.
+    """
+    print("\n--- Key Assignment ---")
+    print("Please press the key you wish to use to TOGGLE the auto-clicker.")
+    print("Press 'Esc' at any time to exit the script.")
+    print("Waiting for key press...")
+
+    while True:
+        try:
+            event = keyboard.read_event(suppress=True) # Suppress key event to prevent it from typing
+            if event.event_type == keyboard.KEY_DOWN:
+                if event.name == 'esc':
+                    print("[INFO] 'Esc' pressed during key assignment. Exiting script.")
+                    return None
+                else:
+                    print(f"[SYSTEM] '{event.name}' assigned as the auto-clicker toggle key.")
+                    return event.name
+        except Exception as e:
+            print(f"[ERROR] Error during key assignment: {e}")
+            return None # Indicate failure
+
+# --- Pre-load the target images once ---
+# This list will store tuples of (PIL_Image_object, original_filename)
+template_images_data = []
+
+def load_target_images():
+    """
+    Loads all target images from the script's directory.
+    It looks for 'image.png', then 'image1.png', 'image2.png', etc.,
+    until no more sequential image files are found.
+    Returns a list of (PIL_Image_object, filename) tuples and a boolean
+    indicating if any images were successfully loaded.
+    """
+    loaded_images = []
+    found_any_image = False
+
+    # Try to load 'image.png' first (no number suffix)
+    first_image_path = os.path.join(SCRIPT_DIR, f'{BASE_IMAGE_NAME}.png')
+    if os.path.exists(first_image_path):
+        try:
+            img = Image.open(first_image_path)
+            loaded_images.append((img, f'{BASE_IMAGE_NAME}.png'))
+            print(f"[SYSTEM] Successfully loaded target image: {BASE_IMAGE_NAME}.png")
+            found_any_image = True
+        except Exception as e:
+            print(f"[SYSTEM] Error loading {BASE_IMAGE_NAME}.png: {e}")
+
+    # Then, try to load 'image1.png', 'image2.png', and so on
+    i = 1
+    while True:
+        image_filename = f'{BASE_IMAGE_NAME}{i}.png'
+        image_path = os.path.join(SCRIPT_DIR, image_filename)
+        if os.path.exists(image_path):
+            try:
+                img = Image.open(image_path)
+                loaded_images.append((img, image_filename))
+                print(f"[SYSTEM] Successfully loaded target image: {image_filename}")
+                found_any_image = True
+                i += 1
+            except Exception as e:
+                print(f"[SYSTEM] Error loading {image_filename}: {e}")
+                # If an image in the sequence fails to load, stop trying subsequent ones
+                break # Stop if a numbered image in the sequence fails to load
+        else:
+            # No more images found in the sequence, so break the loop
+            break
+
+    return loaded_images, found_any_image
+
+# Attempt to load all target images at script startup
+template_images_data, script_can_proceed = load_target_images()
+
+# Initialize the highlighter window as soon as images are loaded
+if script_can_proceed:
+    init_highlighter()
+    
+    # Now, get the activation key from the user
+    ACTIVATION_KEY = get_activation_key()
+    if ACTIVATION_KEY is None:
+        script_can_proceed = False # If user pressed Esc or error during key assignment, exit
+
+# --- Keyboard listener for script exit and activation key status ---
+def on_key_event(event):
+    """
+    Handles keyboard events, specifically to allow the user to exit the script by pressing 'Esc'.
+    Also updates and prints the status of the chosen activation key.
+    """
+    global script_running, ctrl_active # Renamed ctrl_active to reflect general use
+
+    if event.name == 'esc' and event.event_type == keyboard.KEY_DOWN:
+        print("\n[INFO] Esc key pressed. Exiting script.")
+        script_running = False
+        
+    if ACTIVATION_KEY and event.name == ACTIVATION_KEY: # Check against the assigned key
+        if event.event_type == keyboard.KEY_DOWN and not ctrl_active:
+            print(f"\n[STATUS] '{ACTIVATION_KEY}' key pressed. Starting auto-clicker.")
+            print("It will cycle through images and click the current target if found.")
+            ctrl_active = True
+        elif event.event_type == keyboard.KEY_UP and ctrl_active:
+            print(f"[STATUS] '{ACTIVATION_KEY}' key released. Stopping auto-clicker.")
+            ctrl_active = False
+
+# Register the keyboard listener for 'Esc' and the chosen activation key.
+# This hook needs to be set up *after* ACTIVATION_KEY is determined.
+# It will be set up inside the try block if script_can_proceed.
+
+print("\nScript started.")
+if script_can_proceed: # Only print these if setup was successful
+    print(f"Hold down the '{ACTIVATION_KEY}' key to activate the auto-clicker.")
+    print("It will continuously take screenshots and sequentially search for the loaded images.")
+    print(f"When the *current* target image is found, it will click {CLICKS_PER_DETECTION} times very rapidly.")
+    if CLICK_CLOSEST_TO_CURSOR:
+        print("If multiple matches are found, it will click the one closest to your mouse cursor.")
+    else:
+        print("If multiple matches are found, it will click the top-leftmost one.")
+    if DEBUG_MODE:
+        print(f"DEBUG MODE is ENABLED: Detected images will be highlighted in red for {HIGHLIGHT_DURATION_MS / 1000.0} seconds.")
+    print(f"To stop the auto-clicker, simply release the '{ACTIVATION_KEY}' key.")
+    print("To exit the script completely, press the 'Esc' key.")
+    print("If the script becomes unresponsive, move your mouse to any of the four corners of the screen to activate PyAutoGUI's failsafe.")
+
+# --- Main auto-clicker loop ---
+try:
+    if script_can_proceed: # Only hook keyboard and run main loop if setup was successful
+        keyboard.hook(on_key_event) # Hook the keyboard listener here after ACTIVATION_KEY is set
+        with mss.mss() as sct:
+            while script_running: # Main loop condition
+                if ACTIVATION_KEY and keyboard.is_pressed(ACTIVATION_KEY):
+                    # Ensure there are images to process
+                    if not template_images_data:
+                        print("[ERROR] No target images loaded. Cannot proceed with clicking.")
+                        script_can_proceed = False # This will break the outer while loop on next iteration
+                        continue
+
+                    # Get the current target image and its filename based on the index
+                    current_template_img_obj, current_img_filename = template_images_data[current_image_index]
+
+                    try:
+                        # Grab a screenshot of the primary monitor.
+                        sct_img = sct.grab(sct.monitors[0])
+
+                        # Convert the mss screenshot to a PIL Image object.
+                        haystack_image = Image.frombytes("RGB", sct_img.size, sct_img.rgb)
+
+                        location = None
+                        if CLICK_CLOSEST_TO_CURSOR:
+                            # Find all occurrences of the image
+                            all_locations = list(pyautogui.locateAll(
+                                current_template_img_obj,
+                                haystack_image,
+                                confidence=CONFIDENCE_LEVEL,
+                                grayscale=True
+                            ))
+
+                            if all_locations:
+                                # Get current mouse position
+                                current_mouse_x, current_mouse_y = pyautogui.position()
+                                
+                                min_distance = float('inf')
+                                closest_location = None
+
+                                for loc in all_locations:
+                                    # Calculate center of the found image
+                                    loc_center_x, loc_center_y = pyautogui.center(loc)
+                                    # Calculate Euclidean distance
+                                    distance = math.sqrt(
+                                        (loc_center_x - current_mouse_x)**2 + 
+                                        (loc_center_y - current_mouse_y)**2
+                                    )
+                                    
+                                    if distance < min_distance:
+                                        min_distance = distance
+                                        closest_location = loc
+                                
+                                location = closest_location # Set the closest one as the target location
+                        else:
+                            # Just find the first occurrence (default behavior)
+                            location = pyautogui.locate(
+                                current_template_img_obj,
+                                haystack_image,
+                                confidence=CONFIDENCE_LEVEL,
+                                grayscale=True
+                            )
+
+                        if location:
+                            # If DEBUG_MODE is enabled, highlight the detected area
+                            if DEBUG_MODE:
+                                print(f"[DEBUG] Highlighting detected image at {location}")
+                                highlight_region_persistent(
+                                    x=location.left,
+                                    y=location.top,
+                                    width=location.width,
+                                    height=location.height,
+                                    duration_ms=HIGHLIGHT_DURATION_MS
+                                )
+                            
+                            # If the current target image is found, calculate its center.
+                            center_x, center_y = pyautogui.center(location)
+                            print(f"[ACTION] Current target '{current_img_filename}' found at ({center_x}, {center_y}). Initiating {CLICKS_PER_DETECTION} clicks burst.")
+                            
+                            # Perform a burst of clicks at the found location
+                            for _ in range(CLICKS_PER_DETECTION):
+                                pyautogui.click(center_x, center_y)
+                                if BURST_CLICK_DELAY > 0:
+                                    time.sleep(BURST_CLICK_DELAY)
+                            print(f"[ACTION] Completed {CLICKS_PER_DETECTION} clicks burst for '{current_img_filename}'.")
+                        else:
+                            # If the current target image is not found on the screen.
+                            print(f"[INFO] Current target '{current_img_filename}' not found on screen.")
+                        
+                        # Move to the next image in the sequence, looping back to the start if at the end
+                        current_image_index = (current_image_index + 1) % len(template_images_data)
+
+                    except pyautogui.PyAutoGUIException as e:
+                        # Catch specific PyAutoGUI errors (e.g., image not found, or issues with screen capture)
+                        print(f"[ERROR] PyAutoGUI error during operation for '{current_img_filename}': {e}")
+                        # Still try to move to the next image to avoid getting stuck on a problematic one
+                        current_image_index = (current_image_index + 1) % len(template_images_data)
+                    except Exception as e:
+                        # Catch any other unexpected errors during the inner loop execution.
+                        print(f"[ERROR] An unexpected error occurred during search/click for '{current_img_filename}': {e}")
+                        # Still try to move to the next image
+                        current_image_index = (current_image_index + 1) % len(template_images_data)
+                else:
+                    # If the activation key is not pressed, pause briefly to reduce CPU usage.
+                    time.sleep(0.1)
+
+                # A small delay to prevent the loop from consuming 100% CPU.
+                # This delay applies after a detection cycle (and potential click burst).
+                time.sleep(LOOP_INTERVAL_AFTER_BURST)
+
+# --- Global Error Handling ---
+except pyautogui.FailSafeException:
+    # This exception is triggered if the mouse cursor is moved to any of the
+    # four corners of the screen, providing a way to stop the script if it
+    # becomes uncontrollable.
+    print("\n[SYSTEM] PyAutoGUI failsafe triggered (mouse moved to screen corner). Script stopped.")
+except Exception as e:
+    # Catches any other unhandled errors that might occur during main script execution.
+    print(f"\n[SYSTEM] An unhandled script error occurred: {e}")
+finally:
+    # --- Cleanup ---
+    # Unhook all keyboard listeners to release system resources when the script exits.
+    keyboard.unhook_all()
+    print("[SYSTEM] Script execution finished.")
+    # Clean up the Tkinter highlighter window
+    cleanup_highlighter()
+    # Add a final prompt to keep the window open if an error occurred at startup
+    if not script_can_proceed:
+        input("Press Enter to close this window...") # This line keeps the console window open
+

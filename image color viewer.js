@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         
+// @name  image color viewer.js
 // @namespace    github.com/annaprojects
 // @version      1.3
 // @description  Adds context menu options to view an image in a new tab with dynamic background controls, and to change the background directly behind the image on the current page (white, black, transparent, reset).

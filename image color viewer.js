@@ -1,12 +1,12 @@
 // ==UserScript==
-// @name  image color viewer.js
-// @namespace    github.com/annaprojects
-// @version      1.3
-// @description  Adds context menu options to view an image in a new tab with dynamic background controls, and to change the background directly behind the image on the current page (white, black, transparent, reset).
-// @author       annaroblox
-// @match        *://*/*
-// @grant        GM_registerMenuCommand
-// @grant        GM_openInTab
+// @name        image color viewer
+// @namespace   github.com/annaprojects
+// @version     1.4 
+// @description Adds context menu options to view an image in a new tab with dynamic background controls, and to change the background directly behind the image on the current page (white, black, transparent, reset). Also adds keyboard shortcuts for quick background toggling.
+// @author      annaroblox
+// @match       *://*/*
+// @grant       GM_registerMenuCommand
+// @grant       GM_openInTab
 // ==/UserScript==
 
 (function() {
@@ -25,6 +25,7 @@
      * When a user right-clicks, this function checks if the target is an image.
      * If it is, both the image's source URL and the image DOM element are stored.
      * Otherwise, both are reset to null.
+     * This listener is primarily for the Tampermonkey context menu commands.
      */
     document.addEventListener('contextmenu', function(e) {
         if (e.target.tagName === 'IMG') {
@@ -35,6 +36,58 @@
             currentImageElement = null; // Clear both if a non-image element is right-clicked
         }
     }, true); // Use capture phase to ensure this runs before other context menu handlers
+
+    /**
+     * New Event listener for 'click' events to handle keyboard shortcuts.
+     * This allows users to quickly change the background of an image using
+     * Ctrl+Shift+Click, Alt+Shift+Click, or Alt+Click.
+     */
+    document.addEventListener('click', function(e) {
+        // Check if the clicked element is an image
+        if (e.target.tagName === 'IMG') {
+            const imageElement = e.target;
+            let handled = false; // Flag to indicate if a shortcut was used
+
+            // Ctrl + Shift + Click: Set background to White
+            if (e.ctrlKey && e.shiftKey) {
+                setImageBackground(imageElement, 'white');
+                handled = true;
+            }
+            // Alt + Shift + Click: Set background to Black
+            else if (e.altKey && e.shiftKey) {
+                setImageBackground(imageElement, 'black');
+                handled = true;
+            }
+            // Alt + Click: Toggle background between White and Black
+            else if (e.altKey && !e.shiftKey) {
+                const parent = imageElement.parentNode;
+                let currentBgColor = '';
+
+                // Check if the image is already wrapped by our custom div
+                if (parent && parent.classList && parent.classList.contains(WRAPPER_CLASS)) {
+                    // Get the current background color of the wrapper
+                    currentBgColor = parent.style.backgroundColor;
+                }
+
+                // Toggle logic: if current is black, go to white; otherwise, go to black
+                // This also handles cases where the background is transparent or default,
+                // making the first Alt+Click set it to black.
+                if (currentBgColor === 'black') {
+                    setImageBackground(imageElement, 'white');
+                } else {
+                    setImageBackground(imageElement, 'black');
+                }
+                handled = true;
+            }
+
+            // If a shortcut was used, prevent default browser actions (like opening image link)
+            // and stop event propagation to avoid conflicts with other handlers.
+            if (handled) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }
+    }, true); // Use capture phase to catch the event early
 
     /**
      * Registers a context menu command for "View Image in New Tab".

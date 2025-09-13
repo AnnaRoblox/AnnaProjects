@@ -170,7 +170,7 @@ class ReplacerApp:
     def __init__(self, master):
         self.master = master
         master.title("Character Replacer")
-        master.attributes('-topmost', True)
+        master.attributes('-topmost', False)
         master.resizable(False, False)
 
         self.shared_state = {"table": MASTER["normal"], "active": True}

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Sporepedia Downloader
 // @namespace    https://github.com/AnnaRoblox
-// @version      2.6
-// @description  download creations from sporepedia includes automatic category sorting
+// @version      2.7
+// @description  Download creations from Sporepedia with automatic category sorting and multi-page queueing.
 // @author       AnnaRoblox
 // @match        https://www.spore.com/sporepedia*
 // @match        https://www.spore.com/*sast-*
@@ -10,11 +10,14 @@
 // @match        https://www.spore.com/*advasrch-*
 // @grant        GM_addStyle
 // @run-at       document-end
+// @downloadURL https://update.greasyfork.org/scripts/550732/Sporepedia%20Downloader.user.js
+// @updateURL https://update.greasyfork.org/scripts/550732/Sporepedia%20Downloader.meta.js
 // ==/UserScript==
 
 /* ========== CONFIG ========== */
 const maxSingle = 3;          // ≤ this many → individual downloads
 const zipName   = 'Sporepedia-Pack.zip';
+const pageLoadDelay = 1500;   // ms to wait for next page to load
 /* ============================ */
 
 /* ---------- state ---------- */
@@ -22,6 +25,17 @@ const queue = new Map(); // Stores { id => categoryFolderName }
 
 /* ---------- helpers ---------- */
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isElementHidden(element) {
+    if (!element) return true;
+    const computedStyle = window.getComputedStyle(element, null);
+    const hiddenRegEx = /^hidden|none$/i;
+    return hiddenRegEx.test(computedStyle.display) || hiddenRegEx.test(computedStyle.visibility);
+}
 
 function downloadURL(url, fname) {
   const a = document.createElement('a');
@@ -48,12 +62,38 @@ async function fetchText(url) {
 function mapCategoryToFolderName(rawCategory) {
     const cat = rawCategory.toLowerCase();
     // category mappings
-    if (cat.includes('creature') || cat === 'adv_unset' || cat === 'Industry') return 'Creatures';
+    if (cat.includes('creature') || cat === 'adv_unset' || cat === 'industry') return 'Creatures';
     if (cat === 'house' || cat === 'building' || cat === 'entertainment' || cat === 'city_hall') return 'Buildings';
     if (cat === 'ufo') return 'UFOs';
     if (cat.includes('_land') || cat.includes('_air') || cat.includes('_water') || cat.startsWith('veh')) return 'Vehicles';
     return rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1).toLowerCase();
 }
+
+
+/* ---------- Page Navigation Class ---------- */
+class AssetThumbnailsPanel {
+    constructor() {
+        this.assetThumbnailsPanel = document.getElementById('asset-thumbnails');
+        this.nextPageButton = this.assetThumbnailsPanel?.querySelector('.js-pagination-forward');
+
+        this.sporecastPanel = document.getElementById('sporecastinfo');
+        this.sporecastNextPageButton = this.sporecastPanel?.querySelector('.js-pagination-forward');
+    }
+
+    get sporecastPanelIsActive() {
+        return !isElementHidden(this.sporecastPanel);
+    }
+
+    moveToNextPage() {
+        const pageButton = this.sporecastPanelIsActive ? this.sporecastNextPageButton : this.nextPageButton;
+        if (pageButton && !isElementHidden(pageButton)) {
+            pageButton.click();
+            return true;
+        }
+        return false;
+    }
+}
+
 
 /* ---------- single creation (individual download) ---------- */
 async function downloadCreation(id) {
@@ -84,7 +124,6 @@ async function downloadQueueAsZip() {
 
   const zip = new JSZip();
 
-
   const idsToProcess = [...queue];
   const total = idsToProcess.length;
   let processed = 0;
@@ -101,7 +140,6 @@ async function downloadQueueAsZip() {
       const xmltxt  = await fetchText(metaUrl);
       const xml     = new DOMParser().parseFromString(xmltxt, 'application/xml');
 
-      //  Create folders directly on the main zip object.
       const catFolder = zip.folder(categoryFolder);
 
       const pngUrl = `https://www.spore.com/static/thumb/${id.slice(0,3)}/${id.slice(3,6)}/${id.slice(6,9)}/${id}.png`;
@@ -142,36 +180,73 @@ function loadJSZip() {
   });
 }
 
+/* ---------- Multi-Page Queueing ---------- */
+async function queueMultiplePages(pagesToQueue) {
+    const goBtn = $('#spdl-queue-pages');
+    const pageInput = $('#spdl-page-count');
+    goBtn.disabled = true;
+    pageInput.disabled = true;
+
+    const panel = new AssetThumbnailsPanel();
+    let pagesProcessed = 0;
+
+    for (let i = 0; i < pagesToQueue; i++) {
+        pagesProcessed++;
+        goBtn.textContent = `Page ${pagesProcessed}/${pagesToQueue}`;
+
+        addVisibleToQueue();
+        renderFloat(); // Update queue count display in the UI
+
+        if (i < pagesToQueue - 1) { // Don't click next on the last page
+            const canMove = panel.moveToNextPage();
+            if (!canMove) {
+                console.log('Reached the last available page.');
+                break;
+            }
+            await sleep(pageLoadDelay); // Wait for new assets to load
+        }
+    }
+
+    // Restore UI state
+    goBtn.disabled = false;
+    pageInput.disabled = false;
+    goBtn.textContent = 'Go';
+    console.log(`Finished queueing from ${pagesProcessed} pages.`);
+}
+
+function addVisibleToQueue() {
+    const items = getVisibleCreations();
+    let added = 0;
+    items.forEach(item => {
+        if (!queue.has(item.id)) {
+            queue.set(item.id, item.category);
+            added++;
+        }
+    });
+    console.log(`Added ${added} new creation(s) to queue.`);
+    return added;
+}
+
+
 /* ---------- UI ---------- */
-// styles for a sticky top banner.
 GM_addStyle(`
 #spdl-float {
-  position: sticky;
-  top: 0;
-  z-index: 9999;
-  background: #222;
-  color: #fff;
+  position: sticky; top: 0; z-index: 9999;
+  background: #222; color: #fff;
   padding: 10px;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 14px;
+  font-family: Arial, Helvetica, sans-serif; font-size: 14px;
   box-shadow: 0 2px 8px rgba(0,0,0,.6);
-  width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  width: 100%; box-sizing: border-box;
+  display: flex; justify-content: center; align-items: center; flex-wrap: wrap;
 }
-#spdl-float span {
-  margin-right: 15px;
-}
-#spdl-float button {
-  margin: 0 8px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
-#spdl-float button:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
+#spdl-float > * { margin: 3px 8px; }
+#spdl-float span { margin-right: 5px; }
+#spdl-float button { padding: 4px 10px; cursor: pointer; }
+#spdl-float button:disabled { cursor: not-allowed; opacity: 0.7; }
+#spdl-float .spdl-section { margin-left: 15px; padding-left: 15px; border-left: 1px solid #555; display: flex; align-items: center;}
+#spdl-page-count {
+  width: 50px; margin: 0 5px; vertical-align: middle; background: #333;
+  color: #fff; border: 1px solid #555; padding: 4px; border-radius: 3px;
 }
 .spdl-plus {
   margin-left: 6px; padding: 2px 6px; font-size: 12px; cursor: pointer;
@@ -183,7 +258,6 @@ GM_addStyle(`
 
 const float = document.createElement('div');
 float.id = 'spdl-float';
-// Prepend to body for sticky positioning to work best.
 document.body.prepend(float);
 
 function renderFloat() {
@@ -191,9 +265,16 @@ function renderFloat() {
   float.innerHTML = `
     <span>Queue: <b>${cnt}</b></span>
     <button id="spdl-dl-all">Download all</button>
-    <button id="spdl-queue-all">Queue all</button>
+    <button id="spdl-queue-all">Queue Page</button>
     <button id="spdl-clear">Clear</button>
+    <div class="spdl-section">
+      <span>Queue next</span>
+      <input type="number" id="spdl-page-count" value="5" min="1" max="100">
+      <span>pages</span>
+      <button id="spdl-queue-pages">Go</button>
+    </div>
   `;
+
   $('#spdl-dl-all').onclick = () => {
     if (queue.size === 0) return alert('Queue is empty.');
     if (queue.size <= maxSingle) {
@@ -207,22 +288,31 @@ function renderFloat() {
       });
     }
   };
+
   $('#spdl-queue-all').onclick = () => {
-    const items = getVisibleCreations();
-    let added = 0;
-    items.forEach(item => { if (!queue.has(item.id)) { queue.set(item.id, item.category); added++; } });
+    addVisibleToQueue();
     renderFloat();
-    if (added) alert(`Added ${added} new creation(s) to queue.`);
-    else alert('All visible creations are already in the queue.');
   };
-  $('#spdl-clear').onclick = () => { queue.clear(); renderFloat(); };
+
+  $('#spdl-clear').onclick = () => {
+      queue.clear();
+      renderFloat();
+  };
+
+  $('#spdl-queue-pages').onclick = () => {
+      const pageCountInput = $('#spdl-page-count');
+      const pages = parseInt(pageCountInput.value, 10);
+      if (isNaN(pages) || pages < 1) {
+          return alert('Please enter a valid number of pages.');
+      }
+      queueMultiplePages(pages);
+  };
 }
 
 /* ---------- thumbs helpers ---------- */
 function getVisibleCreations() {
   const creations = [];
-  const imgs = document.querySelectorAll('img.js-asset-thumbnail[src*="/static/thumb/"]');
-  imgs.forEach(img => {
+  document.querySelectorAll('img.js-asset-thumbnail[src*="/static/thumb/"]').forEach(img => {
     const idMatch = img.src.match(/\/([0-9]{9,})\.png/);
     if (!idMatch) return;
     const id = idMatch[1];
@@ -232,32 +322,37 @@ function getVisibleCreations() {
     const category = mapCategoryToFolderName(rawCategory);
     creations.push({ id, category });
   });
+  // Use a map to ensure creations are unique by ID
   return Array.from(new Map(creations.map(c => [c.id, c])).values());
 }
 
 function addPlusButtons() {
-  const imgs = document.querySelectorAll('img.js-asset-thumbnail[src*="/static/thumb/"]');
-  imgs.forEach(img => {
+  document.querySelectorAll('img.js-asset-thumbnail[src*="/static/thumb/"]').forEach(img => {
     if (img.dataset.spdl) return;
     img.dataset.spdl = '1';
+
     const idMatch = img.src.match(/\/([0-9]{9,})\.png/);
     if (!idMatch) return;
     const id = idMatch[1];
+
     const assetContainer = img.closest('.js-asset-view');
     const typeIconDiv = assetContainer?.querySelector('.typeIcon > div');
     const rawCategory = typeIconDiv ? typeIconDiv.className : 'Other';
     const categoryFolder = mapCategoryToFolderName(rawCategory);
+
     const btn = document.createElement('button');
     btn.className = 'spdl-plus';
     btn.textContent = '+ Queue';
     btn.title = 'Add to download queue';
     btn.onclick = e => {
-      e.preventDefault(); e.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
       queue.set(id, categoryFolder);
       renderFloat();
       btn.textContent = '✓ Queued';
       btn.disabled = true;
     };
+    // Ensure parent can host a positioned element
     if (getComputedStyle(img.parentElement).position === 'static') {
         img.parentElement.style.position = 'relative';
     }

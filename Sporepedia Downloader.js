@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Sporepedia Downloader
 // @namespace    https://github.com/AnnaRoblox
-// @version      2.7
+// @version      2.8
 // @description  Download creations from Sporepedia with automatic category sorting and multi-page queueing.
 // @author       AnnaRoblox
 // @match        https://www.spore.com/sporepedia*
@@ -62,13 +62,13 @@ async function fetchText(url) {
 function mapCategoryToFolderName(rawCategory) {
     const cat = rawCategory.toLowerCase();
     // category mappings
-    if (cat.includes('creature') || cat === 'adv_unset' || cat === 'industry') return 'Creatures';
-    if (cat === 'house' || cat === 'building' || cat === 'entertainment' || cat === 'city_hall') return 'Buildings';
+    if (cat.startsWith('adv_')) return 'Adventures';
+    if (cat.includes('creature')) return 'Creatures';
+    if (cat === 'house' || cat === 'building' || cat === 'entertainment' || cat === 'city_hall' || cat === 'industry') return 'Buildings';
     if (cat === 'ufo') return 'UFOs';
     if (cat.includes('_land') || cat.includes('_air') || cat.includes('_water') || cat.startsWith('veh')) return 'Vehicles';
     return rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1).toLowerCase();
 }
-
 
 /* ---------- Page Navigation Class ---------- */
 class AssetThumbnailsPanel {

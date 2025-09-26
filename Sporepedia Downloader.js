@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Sporepedia Downloader
 // @namespace    https://github.com/AnnaRoblox
-// @version      2.5
+// @version      2.6
 // @description  download creations from sporepedia includes automatic category sorting
 // @author       AnnaRoblox
 // @match        https://www.spore.com/sporepedia*
@@ -48,7 +48,7 @@ async function fetchText(url) {
 function mapCategoryToFolderName(rawCategory) {
     const cat = rawCategory.toLowerCase();
     // category mappings
-    if (cat.includes('creature') || cat === 'adv_unset') return 'Creatures';
+    if (cat.includes('creature') || cat === 'adv_unset') || cat === 'Industry') return 'Creatures';
     if (cat === 'house' || cat === 'building' || cat === 'entertainment' || cat === 'city_hall') return 'Buildings';
     if (cat === 'ufo') return 'UFOs';
     if (cat.includes('_land') || cat.includes('_air') || cat.includes('_water') || cat.startsWith('veh')) return 'Vehicles';

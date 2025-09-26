@@ -17,7 +17,7 @@
 /* ========== CONFIG ========== */
 const maxSingle = 3;          // ≤ this many → individual downloads
 const zipName   = 'Sporepedia-Pack.zip';
-const pageLoadDelay = 1500;   // ms to wait for next page to load
+const pageLoadDelay = 3500;   // ms to wait for next page to load
 /* ============================ */
 
 /* ---------- state ---------- */

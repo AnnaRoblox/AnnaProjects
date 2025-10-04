@@ -2,7 +2,7 @@
 // @name         Sporepedia Downloader
 // @namespace    https://github.com/AnnaRoblox
 // @version      2.8
-// @description  Download creations from Sporepedia with automatic category sorting and multi-page queueing.
+// @description  Download creations from Sporepedia with automatic category sorting and multi-page queueing
 // @author       AnnaRoblox
 // @match        https://www.spore.com/sporepedia*
 // @match        https://www.spore.com/*sast-*

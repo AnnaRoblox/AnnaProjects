@@ -1,0 +1,365 @@
+/* ==UserStyle==
+@name         Global Black 
+@version      1
+@namespace    github.com/annaroblox
+@description  dark mode for all websites with fixes for some sites it breaks/fails to work on sites so far: youtube.com,chatgpt.com
+@author       annaroblox
+@license      MIT-0
+==/UserStyle== */
+@-moz-document url-prefix("h"), url-prefix("f") {
+  
+    
+  /* Set base dark colors */
+  html, body {
+    background: #000 !important;
+    color: #e0e0e0 !important;
+  }
+  
+  /* Only target likely white/gray backgrounds - EXCLUDE video player and YouTube's special button elements */
+  div:not([class*="player"]):not([class*="video"]):not([id*="player"]):not([id*="video"]):not([class*="ytp-"]):not([class*="yt"]),
+  section:not([class*="player"]):not([class*="video"]),
+  article, header, footer, nav, main,
+  table, thead, tbody, tr, td, th,
+  input:not([class*="ytp-"]), 
+  textarea, 
+  select {
+    background-color: #000 !important;
+    border-color: #000 !important;
+    color: #e0e0e0 !important;
+  }
+  
+  /* Links - EXCLUDE video player links */
+  a:not([class*="ytp-"]):not([class*="player"]):not([class*="video"]) {
+    color: #f7fbff !important;
+  }
+  
+  /* Preserve elements with colored backgrounds */
+  [class*="button"][style*="background"],
+  [class*="btn"][style*="background"],
+  [style*="background: rgb"]:not([style*="rgb(255"]):not([style*="rgb(250"]):not([style*="rgb(240"]) {
+    background-color: unset !important;
+  }
+  
+  /* Don't mess with media */
+  img, video, svg, canvas {
+    filter: none !important;
+  }
+}
+
+/*
+=====================================================
+  SITE-SPECIFIC FIXES
+=====================================================
+*/
+/*
+==================================================================
+  YOUTUBE-SPECIFIC THEME (Whitelist Approach)
+==================================================================
+ * This block ONLY runs on YouTube.
+ * It works by targeting specific page elements we know are safe to color,
+ * like the main app container, the comments section, etc.
+ * It NEVER uses a generic 'div' rule, so it will not break complex
+ * components like the subscribe button.
+*/
+@-moz-document domain("youtube.com") {
+
+  /* 1. Youtube */
+  ytd-app, #content.ytd-app, #page-manager.ytd-app,
+  #primary.ytd-watch-flexy, #secondary.ytd-watch-flexy,
+  #comments.ytd-watch-flexy, #description.ytd-watch-flexy,
+  #related.ytd-watch-flexy, ytd-watch-next-secondary-results-renderer {
+    background-color: #040404 !important;
+    color: #e0e0e0 !important;
+  }
+  
+  /* 2. Target specific content items like comments and video previews */
+  ytd-comment-thread-renderer, ytd-comment-renderer,
+  ytd-video-renderer, ytd-compact-video-renderer, ytd-rich-item-renderer,
+  ytd-playlist-panel-renderer, #playlist-items.ytd-playlist-panel-renderer,
+  #container.ytd-background-promo-renderer {
+    background-color: #000 !important;
+  }
+
+  /* 3. Set text colors */
+  #description-text.ytd-watch-metadata,
+  #title.ytd-watch-metadata h1.ytd-watch-metadata,
+  #text.ytd-channel-name,
+  #content-text.ytd-comment-renderer,
+  #info-text.ytd-video-meta-block,
+  yt-formatted-string.ytd-video-meta-block,
+  yt-formatted-string.ytd-toggle-button-renderer {
+    color: #e0e0e0 !important;
+  }
+  
+  /* 4. Link colors */
+  a.yt-simple-endpoint, a.yt-formatted-string {
+    color: #fdfeff !important; /* A nice blue for links */
+  }
+    /* other youtube elements */
+    div#description.item.style-scope.ytd-watch-metadata
+     {
+    background-color: #000 !important;
+          color: #000 !important;
+  }
+   div > div > div > div > div > ytd-menu-renderer[safe-area][menu-active][tonal-override][has-items][has-flexible-items] > div > segmented-like-dislike-button-view-model[button-renderer] > yt-smartimation > div > div > like-button-view-model > toggle-button-view-model > button-view-model > button[title][aria-pressed][aria-label][aria-disabled][style]
+    {
+    background-color: #000 !important;
+          color: #fff !important;
+  }
+      div > div > div > div > div > ytd-menu-renderer[safe-area][menu-active][tonal-override][has-items][has-flexible-items] > div > segmented-like-dislike-button-view-model[button-renderer] > yt-smartimation > div > div > dislike-button-view-model > toggle-button-view-model > button-view-model > button[title][aria-pressed][aria-label][aria-disabled][style]
+    {
+    background-color: #000 !important;
+          color: #fff !important;
+  }
+div#actions-inner.style-scope.ytd-watch-metadata > div#menu.style-scope.ytd-watch-metadata > ytd-menu-renderer.style-scope.ytd-watch-metadata[safe-area][menu-active][tonal-override][has-items][has-flexible-items] > yt-button-shape#button-shape.style-scope.ytd-menu-renderer > button.yt-spec-button-shape-next.yt-spec-button-shape-next--tonal.yt-spec-button-shape-next--mono.yt-spec-button-shape-next--size-m.yt-spec-button-shape-next--icon-button.yt-spec-button-shape-next--enable-backdrop-filter-experiment[title]
+     {
+    background-color: #000 !important;
+          color: #fff !important;
+  }
+    div#always-shown.style-scope.ytd-metadata-row-container-renderer > ytd-rich-metadata-row-renderer.style-scope.ytd-metadata-row-container-renderer > div#contents.style-scope.ytd-rich-metadata-row-renderer a#endpoint-link.yt-simple-endpoint.style-scope.ytd-rich-metadata-renderer[href]
+    {
+    background-color: #000 !important;
+          color: #fff !important;
+  }
+    ytd-app[frosted-glass-exp][is-watch-page] > ytd-popup-container.style-scope.ytd-app > tp-yt-iron-dropdown.style-scope.ytd-popup-container[horizontal-align][vertical-align][aria-disabled][style][prevent-autonav]:nth-of-type(2) > div#contentWrapper.style-scope.tp-yt-iron-dropdown > ytd-menu-popup-renderer.style-scope.ytd-popup-container[slot][role][use-icons][tabindex][style] > tp-yt-paper-listbox#items.style-scope.ytd-menu-popup-renderer[role][tabindex]
+    {
+    background-color: #000 !important;
+          color: #fff !important;
+  }
+    ytd-menu-service-item-renderer[system-icons][use-list-item-styles][role][use-icons][is-selected][tabindex][aria-selected]
+     {
+    background-color: #1c1b1b !important;
+          color: #fff !important;
+  }
+   div.ytp-panel-menu[role][style]
+   {
+    background-color: #000 !important;
+          color: #fff !important;
+  }
+    div#buttons.style-scope.ytd-masthead > ytd-button-renderer.style-scope.ytd-masthead[button-renderer][button-next] > yt-button-shape > button.yt-spec-button-shape-next.yt-spec-button-shape-next--tonal.yt-spec-button-shape-next--overlay.yt-spec-button-shape-next--size-m.yt-spec-button-shape-next--icon-leading.yt-spec-button-shape-next--enable-backdrop-filter-experiment[title][aria-label]
+    {
+    background-color: #000 !important;
+          color: #fff !important;
+  }
+    yt-button-shape > button.yt-spec-button-shape-next.yt-spec-button-shape-next--text.yt-spec-button-shape-next--overlay.yt-spec-button-shape-next--size-m.yt-spec-button-shape-next--icon-only-default.yt-spec-button-shape-next--enable-backdrop-filter-experiment[title][aria-label][aria-disabled]
+     {
+    background-color: #000 !important;
+          color: #fff !important;
+  }
+    ytd-app[frosted-glass-exp][is-watch-page] > div#content.style-scope.ytd-app > div#masthead-container.style-scope.ytd-app > ytd-masthead#masthead.chunked.masthead-finish[logo-type][slot][page-dark-theme][frosted-glass-mode][role][dark][is-watch-page] > div#container.style-scope.ytd-masthead > div#center.style-scope.ytd-masthead > yt-searchbox.ytSearchboxComponentHost.ytSearchboxComponentDesktop.ytd-masthead.ytSearchboxComponentHostDark[role][client-ve-type] > button.ytSearchboxComponentSearchButton.ytSearchboxComponentSearchButtonDark[aria-label][title]
+     {
+    background-color: #000 !important;
+          color: #fff  !important;
+  }
+    ytd-app[frosted-glass-exp][is-watch-page] > div#content.style-scope.ytd-app > div#masthead-container.style-scope.ytd-app > ytd-masthead#masthead.chunked.masthead-finish[logo-type][slot][page-dark-theme][frosted-glass-mode][role][dark][is-watch-page] > div#container.style-scope.ytd-masthead > div#center.style-scope.ytd-masthead > yt-searchbox.ytSearchboxComponentHost.ytSearchboxComponentDesktop.ytd-masthead.ytSearchboxComponentHostDark[role][client-ve-type] > div.ytSearchboxComponentInputBox.ytSearchboxComponentInputBoxDark
+     {
+    background-color: #000 !important;
+         color: #fff !important;
+  }
+    yt-lockup-metadata-view-model.yt-lockup-metadata-view-model.yt-lockup-metadata-view-model--horizontal.yt-lockup-metadata-view-model--compact > div.yt-lockup-metadata-view-model__text-container > div.yt-lockup-metadata-view-model__metadata > yt-content-metadata-view-model.yt-content-metadata-view-model > div.yt-content-metadata-view-model__metadata-row.yt-content-metadata-view-model__metadata-row--metadata-row-wrap > div.yt-content-metadata-view-model__badge:nth-of-type(1) > yt-badge-view-model.ytBadgeViewModelHost > badge-shape.yt-badge-shape.yt-badge-shape--default > div.yt-badge-shape__text.yt-badge-shape__text--has-multiple-badges-in-row
+     {
+    background-color: #000 !important;
+         color: #fff !important;
+  }
+    yt-lockup-metadata-view-model.yt-lockup-metadata-view-model.yt-lockup-metadata-view-model--horizontal.yt-lockup-metadata-view-model--compact > div.yt-lockup-metadata-view-model__text-container > div.yt-lockup-metadata-view-model__metadata > yt-content-metadata-view-model.yt-content-metadata-view-model > div.yt-content-metadata-view-model__metadata-row.yt-content-metadata-view-model__metadata-row--metadata-row-wrap > div.yt-content-metadata-view-model__badge:nth-of-type(2) > yt-badge-view-model.ytBadgeViewModelHost > badge-shape.yt-badge-shape.yt-badge-shape--commerce
+     {
+    background-color: #000 !important;
+         color: #00ff35 !important;
+  }
+    yt-lockup-metadata-view-model.yt-lockup-metadata-view-model.yt-lockup-metadata-view-model--horizontal.yt-lockup-metadata-view-model--compact > div.yt-lockup-metadata-view-model__text-container > div.yt-lockup-metadata-view-model__metadata > yt-content-metadata-view-model.yt-content-metadata-view-model > div.yt-content-metadata-view-model__metadata-row.yt-content-metadata-view-model__metadata-row--metadata-row-wrap > div.yt-content-metadata-view-model__badge:nth-of-type(1) > yt-badge-view-model.ytBadgeViewModelHost > badge-shape.yt-badge-shape.yt-badge-shape--default
+    {
+    background-color: #000 !important;
+         color: #fff !important;
+  }
+    .yt-spec-button-shape-next--size-m.yt-spec-button-shape-next--segmented-start::after
+    {
+    background-color: #000 !important;
+         color: #fff !important;
+  }
+    ytd-app[frosted-glass-exp][is-watch-page] > ytd-popup-container.style-scope.ytd-app > tp-yt-iron-dropdown.style-scope.ytd-popup-container[horizontal-align][vertical-align][aria-disabled][style][prevent-autonav] > div#contentWrapper.style-scope.tp-yt-iron-dropdown > ytd-multi-page-menu-renderer.style-scope.ytd-popup-container[slot][menu-style][tabindex][style] > div#container.menu-container.style-scope.ytd-multi-page-menu-renderer
+    {
+    background-color: #000 !important;
+         color: #fff !important;
+  }
+    div#header.style-scope.ytd-multi-page-menu-renderer > ytd-simple-menu-header-renderer.style-scope.ytd-multi-page-menu-renderer
+    {
+    background-color: #000 !important;
+         color: #fff !important;
+  }
+    div.dropdown-content.style-scope.tp-yt-paper-menu-button[slot][style] > tp-yt-paper-listbox#menu.dropdown-content.style-scope.yt-dropdown-menu[slot][role][tabindex]
+    {
+    background-color: #000 !important;
+         color: #fff !important;
+  }
+    div.dropdown-content.style-scope.tp-yt-paper-menu-button[slot][style] > tp-yt-paper-listbox#menu.dropdown-content.style-scope.yt-dropdown-menu[slot][role][tabindex] > a.yt-simple-endpoint.style-scope.yt-dropdown-menu.iron-selected[aria-selected][tabindex] > tp-yt-paper-item.style-scope.yt-dropdown-menu[style-target][role][tabindex][aria-disabled]
+    {
+    background-color: #000 !important;
+         color: #fff !important;
+  }
+    div#below.style-scope.ytd-watch-flexy > ytd-comments#comments.style-scope.ytd-watch-flexy > ytd-item-section-renderer#sections.style-scope.ytd-comments[initial-count][lockup-container-type][exp-fix-playlist-header][enable-anchored-panel][header-style][section-identifier] > div#contents.style-scope.ytd-item-section-renderer > ytd-comment-thread-renderer.style-scope.ytd-item-section-renderer[use-small-avatars]:nth-of-type(3) > div#comment-container.style-scope.ytd-comment-thread-renderer > ytd-comment-view-model#comment.style-scope.ytd-comment-thread-renderer[use-small-avatars][web-watch-compact-comments][optimal-reading-width-comments][style] > div#body.style-scope.ytd-comment-view-model > div#main.style-scope.ytd-comment-view-model > ytd-comment-engagement-bar#action-buttons.style-scope.ytd-comment-view-model > div#toolbar.style-scope.ytd-comment-engagement-bar > div#creator-heart.style-scope.ytd-comment-engagement-bar > ytd-creator-heart-renderer.style-scope.ytd-comment-engagement-bar[heart-button-style] > yt-icon-button#creator-heart-button.style-scope.ytd-creator-heart-renderer[disabled]
+    {
+    background-color: #000 !important;
+         color: #000 !important;
+  }
+    ytd-active-account-header-renderer.style-scope.ytd-multi-page-menu-renderer[enable-handles-account-menu-switcher]
+     {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    tp-yt-paper-item.style-scope.ytd-compact-link-renderer[role][style-target][tabindex][aria-disabled]
+     {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    tp-yt-paper-dropdown-menu-light#input.style-scope.ytd-dropdown-renderer[horizontal-align][style-target][aria-disabled][aria-label]
+     {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    button.ytSearchboxComponentSearchButton.ytSearchboxComponentSearchButtonDark[aria-label][title]
+    {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    div.ytSearchboxComponentInputBox.ytSearchboxComponentInputBoxDark
+     {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    div#masthead-container.style-scope.ytd-app > ytd-masthead#masthead.masthead-finish[logo-type][slot][page-dark-theme][frosted-glass-mode][role] > div#container.style-scope.ytd-masthead
+     {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    div#voice-search-button.style-scope.ytd-masthead > ytd-button-renderer.style-scope.ytd-masthead[button-renderer][button-next] > yt-button-shape
+     {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    button.yt-spec-button-shape-next.yt-spec-button-shape-next--tonal.yt-spec-button-shape-next--mono.yt-spec-button-shape-next--size-m.yt-spec-button-shape-next--icon-leading.yt-spec-button-shape-next--enable-backdrop-filter-experiment[title][aria-label]
+     {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    [role="listbox"] div.yt-list-item-view-model__label.yt-list-item-view-model__container.yt-list-item-view-model__container--compact.yt-list-item-view-model__container--tappable.yt-list-item-view-model__container--in-popup
+     {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    ytd-guide-section-renderer.style-scope.ytd-guide-renderer:nth-of-type(2)
+     {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    div#guide-content.style-scope.ytd-app > div#guide-inner-content.style-scope.ytd-app
+    {
+    background-color: #000 !important;
+         color: #fff2f2 !important;
+  }
+    div.ytChipShapeChip.ytChipShapeInactive.ytChipShapeOnlyTextPadding
+    {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+    #chips
+     {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+    ytd-mini-guide-renderer.style-scope.ytd-app[frosted-glass][role][mini-guide-visible]
+     {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+    div#chips-content.style-scope.ytd-feed-filter-chip-bar-renderer
+     {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+    ytd-app[frosted-glass-exp][mini-guide-visible] > ytd-popup-container.style-scope.ytd-app > tp-yt-iron-dropdown.style-scope.ytd-popup-container[horizontal-align][vertical-align][aria-disabled][style][prevent-autonav] > div#contentWrapper.style-scope.tp-yt-iron-dropdown > ytd-multi-page-menu-renderer.style-scope.ytd-popup-container[slot][menu-style][tabindex][style] > div#container.menu-container.style-scope.ytd-multi-page-menu-renderer
+     {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+    yt-icon-button#icon.style-scope.ytd-notification-topbar-button-renderer > button#button.style-scope.yt-icon-button[aria-label]
+    {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+    a#endpoint.yt-simple-endpoint.style-scope.ytd-mini-guide-entry-renderer[aria-selected][aria-label][title][href]
+     {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+    /*
+    
+   * 5. The "Insurance Policy": Just in case the global rule still bleeds through,
+   * this aggressively resets ANY styling on the button components. This ensures
+   * they are completely immune to any other rule in the stylesheet.
+  */
+  ytd-subscribe-button-renderer *,
+  ytd-button-renderer[class*="ytd-watch-metadata"] *,
+  ytd-toggle-button-renderer * {
+      background-color: unset !important;
+      color: unset !important;
+  }
+}
+@-moz-document domain("chatgpt.com") {
+
+    button.relative.flex.h-9.items-center.justify-center.rounded-full.disabled\:text-gray-50.disabled\:opacity-30.w-9.composer-secondary-button-color.hover\:opacity-80[data-testid][aria-label][style]
+    {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+    a.group.__menu-item.hoverable[tabindex][data-active][data-fill][draggable][href][data-discover]
+     {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+    aside.pt-\(--sidebar-section-first-margin-top\).last\:mb-5.tall\:sticky.tall\:top-header-height.tall\:z-20.bg-token-bg-elevated-secondary.relative.\[--sticky-spacer\:6px\]
+        {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+        button.border-token-interactive-border-secondary-default.flex.w-full.items-center.justify-center.gap-1.bg-token-main-surface-primary.rounded-full.border.px-3.py-2.text-xs.font-medium.hover\:bg-token-interactive-bg-secondary-hover.focus-visible\:ring-2.focus-visible\:ring-\[\#5856D6\].focus-visible\:ring-offset-1.focus-visible\:ring-offset-transparent.focus-visible\:outline-hidden.motion-safe\:transition-colors.motion-safe\:duration-150.motion-safe\:ease-out[type]
+        {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+        button#radix-_R_sij59is9q4qcm_.group.flex.cursor-pointer.justify-center.items-center.gap-1.rounded-lg.min-h-9.touch\:min-h-10.px-2\.5.text-lg.hover\:bg-token-surface-hover.focus-visible\:bg-token-surface-hover.font-normal.whitespace-nowrap.focus-visible\:outline-none[aria-label][type][aria-haspopup][aria-expanded][data-state][data-testid][style]
+         {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+        aside.pt-\(--sidebar-section-first-margin-top\).last\:mb-5.tall\:sticky.tall\:top-header-height.tall\:z-20.bg-token-bg-elevated-secondary.relative.\[--sticky-spacer\:6px\] > a.group.__menu-item.hoverable.gap-1\.5[tabindex][data-fill][data-testid][href][data-discover]
+        {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }
+        nav.group\/scrollport.relative.flex.h-full.w-full.flex-1.flex-col.overflow-y-auto.transition-opacity.duration-500[aria-label][data-scrolled-from-end] > aside.pt-\(--sidebar-section-first-margin-top\).last\:mb-5.tall\:sticky.tall\:top-header-height.tall\:z-20.bg-token-bg-elevated-secondary.relative.\[--sticky-spacer\:6px\] > a.group.__menu-item.hoverable[tabindex][data-fill][data-testid][href][data-discover]:nth-of-type(1)
+      {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }  
+        div.group\/sidebar-expando-section.mb-\[var\(--sidebar-expanded-section-margin-bottom\)\]:nth-of-type(3) > a.group.__menu-item.hoverable.gap-1\.5[tabindex][data-fill][data-testid][href][data-discover]
+        {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }  
+        nav.group\/scrollport.relative.flex.h-full.w-full.flex-1.flex-col.overflow-y-auto.transition-opacity.duration-500[aria-label][data-scrolled-from-end] > div.group\/sidebar-expando-section.mb-\[var\(--sidebar-expanded-section-margin-bottom\)\]:nth-of-type(3) > a.group.__menu-item.hoverable[tabindex][data-fill][href][data-discover]:nth-of-type(2)
+        {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }  
+        a.group.__menu-item.hoverable[tabindex][data-fill][draggable][href][data-discover]:nth-of-type(2)
+         {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }  
+          a.group.__menu-item.hoverable[tabindex][data-fill][draggable][href][data-discover]:nth-of-type(3)
+         {
+    background-color: #000 !important;
+         color: #fff7f7 !important;
+  }  
+    
+}

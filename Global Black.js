@@ -1,13 +1,12 @@
 // ==UserScript==
 // @name         Global Black
 // @namespace    github.com/annaroblox
-// @version      1.2
+// @version      1.3
 // @description  A global black dark mode
 // @author       annaroblox
 // @match        */*
 // @grant        none
 // @run-at       document-idle
-// @run-at document idle
 // @license MIT
 // @downloadURL https://update.greasyfork.org/scripts/553805/Global%20Black.user.js
 // @updateURL https://update.greasyfork.org/scripts/553805/Global%20Black.meta.js
@@ -27,6 +26,10 @@
 
     const IGNORED_TAGS = ['IMG', 'PICTURE', 'VIDEO', 'CANVAS', 'SVG'];
 
+    // *** NEW: Timer Configuration ***
+    const ENABLE_PERIODIC_RERUN = true; // Set to false to disable periodic re-runs
+    const RERUN_INTERVAL = 100000; // - adjust as needed (recomended to be more then 5 seconds)
+
     // --- IMMEDIATE STYLE INJECTION (RUNS BEFORE DOM IS READY) ---
     // This is the most important part for an instant effect and preventing a "flash of white".
     const style = document.createElement('style');
@@ -37,7 +40,9 @@
             color-scheme: dark !important;
         }
         /* Instantly apply to the base elements to prevent flash of white */
-        html, body, p, li { // included p and li since they are commonly associated with elements containing text
+        html, body, section, article, header, footer, nav, main, aside,
+        ul, ol, li, dl, table, tr, td, th, thead, tbody, tfoot,
+        form, fieldset {
             background-color: ${TARGET_BACKGROUND_COLOR} !important;
             background: ${TARGET_BACKGROUND_COLOR} !important;
             color: ${TARGET_TEXT_COLOR} !important;
@@ -93,7 +98,7 @@
      */
     function processElement(element) {
         // Basic checks to quickly exit for invalid or already-processed elements.
-        if (!element || element.nodeType !== 1 || IGNORED_TAGS.includes(element.tagName) || element.dataset.pureBlackProcessed) {
+        if (!element || element.nodeType !== 1 || IGNORED_TAGS.includes(element.tagName)) {
             return;
         }
 
@@ -136,9 +141,6 @@
                      element.style.setProperty(prop, TARGET_BORDER_COLOR, 'important');
                  }
             }
-
-            // Mark the element as processed to avoid re-checking it unnecessarily.
-            element.dataset.pureBlackProcessed = 'true';
         }
     }
 
@@ -167,7 +169,7 @@
     }
 
     function runFullConversion() {
-        console.log("Pure Black Mode: Running initial full page conversion...");
+        console.log("Pure Black Mode: Running full page conversion...");
         applyBlackModeToTree(document.documentElement);
     }
 
@@ -187,15 +189,23 @@
                     });
                 } else if (mutation.type === 'attributes') {
                     // If an element's class or style changes, its color might have changed.
-                    // We remove our 'processed' flag and re-run the process on that single element.
-                    if (mutation.target && mutation.target.dataset) {
-                       delete mutation.target.dataset.pureBlackProcessed;
+                    // Re-run the process on that single element.
+                    if (mutation.target) {
                        processElement(mutation.target);
                     }
                 }
             }
         });
     });
+
+    // --- PERIODIC RE-RUN TIMER ---
+    let periodicTimer = null;
+    if (ENABLE_PERIODIC_RERUN) {
+        periodicTimer = setInterval(() => {
+            console.log("Pure Black Mode: Periodic re-run triggered...");
+            runFullConversion();
+        }, RERUN_INTERVAL);
+    }
 
     // --- INITIALIZATION ---
     // The main styles are already injected. Now we wait for the DOM to be ready for deep traversal.
@@ -218,6 +228,9 @@
     window.addEventListener('unload', () => {
         if (observer) {
             observer.disconnect();
+        }
+        if (periodicTimer) {
+            clearInterval(periodicTimer);
         }
         if (tempDiv && tempDiv.parentNode) {
             tempDiv.parentNode.removeChild(tempDiv);

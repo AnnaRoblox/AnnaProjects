@@ -39,7 +39,7 @@
         /* Instantly apply to the base elements to prevent flash of white */
         html, #text, body, mt-sm, section, article, header, footer, nav, main, aside,
         ul, ol, li, dl, table, tr, td, th, thead, tbody, tfoot, style-scope,
-        form, fieldset, button, ::after, section {
+        form, fieldset, button, section {
             background-color: ${TARGET_BACKGROUND_COLOR} !important;
             background: ${TARGET_BACKGROUND_COLOR} !important;
             color: ${TARGET_TEXT_COLOR} !important;

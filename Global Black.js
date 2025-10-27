@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Global Black
 // @namespace    github.com/annaroblox
-// @version      1.7
+// @version      1.8
 // @description  A global black dark mode
 // @author       annaroblox
 // @match        */*
@@ -25,8 +25,7 @@
     const TARGET_BORDER_COLOR = '#000000'; // change this if you want borders to be distinct
 
     const IGNORED_TAGS = ['IMG', 'PICTURE', 'VIDEO', 'CANVAS', 'SVG'];
-
-    // *** Removed: Timer Configuration - relying on MutationObserver for efficiency ***
+ 
 
     // --- IMMEDIATE STYLE INJECTION (RUNS BEFORE DOM IS READY) ---
     // This is the most important part for an instant effect and preventing a "flash of white".
@@ -40,7 +39,7 @@
         /* Instantly apply to the base elements to prevent flash of white */
         html, #text, body, mt-sm, section, article, header, footer, nav, main, aside,
         ul, ol, li, dl, table, tr, td, th, thead, tbody, tfoot, style-scope,
-        form, fieldset, button {
+        form, fieldset, button, ::after, section {
             background-color: ${TARGET_BACKGROUND_COLOR} !important;
             background: ${TARGET_BACKGROUND_COLOR} !important;
             color: ${TARGET_TEXT_COLOR} !important;

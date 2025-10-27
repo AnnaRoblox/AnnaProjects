@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Global Black
 // @namespace    github.com/annaroblox
-// @version      1.3
+// @version      1.4
 // @description  A global black dark mode
 // @author       annaroblox
 // @match        */*
@@ -21,7 +21,7 @@
     const DARK_TEXT_THRESHOLD = 128;
 
     const TARGET_BACKGROUND_COLOR = '#000000';
-    const TARGET_TEXT_COLOR = '#E0E0E0';
+    const TARGET_TEXT_COLOR = '#FFFFFF';
     const TARGET_BORDER_COLOR = '#000000'; // change this if you want borders to be distinct
 
     const IGNORED_TAGS = ['IMG', 'PICTURE', 'VIDEO', 'CANVAS', 'SVG'];
@@ -40,7 +40,7 @@
             color-scheme: dark !important;
         }
         /* Instantly apply to the base elements to prevent flash of white */
-        html, body, section, article, header, footer, nav, main, aside,
+        html, span, #text,  body, section, article, header, footer, nav, main, aside,
         ul, ol, li, dl, table, tr, td, th, thead, tbody, tfoot,
         form, fieldset {
             background-color: ${TARGET_BACKGROUND_COLOR} !important;

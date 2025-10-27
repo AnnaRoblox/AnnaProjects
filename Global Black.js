@@ -49,7 +49,7 @@
         }
         /* Handle syntax highlighting blocks gracefully */
         pre, code {
-           background-color: #1E1E1E !important; /* A very dark grey is often better than pure black for code */
+           background-color: #000000 !important; /* A very dark grey is often better than pure black for code */
            color: #D4D4D4 !important;
         }
     `;

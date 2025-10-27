@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Pure Black Mode
+// @name         Global Black
 // @namespace    github.com/annaroblox
-// @version      1.0
+// @version      1.1
 // @description  A global black dark mode
 // @author       annaroblox
 // @match        */*

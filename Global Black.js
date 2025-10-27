@@ -42,7 +42,7 @@
         /* Instantly apply to the base elements to prevent flash of white */
         html, span, #text,  body, section, article, header, footer, nav, main, aside,
         ul, ol, li, dl, table, tr, td, th, thead, tbody, tfoot,
-        form, fieldset {
+        form, fieldset, button {
             background-color: ${TARGET_BACKGROUND_COLOR} !important;
             background: ${TARGET_BACKGROUND_COLOR} !important;
             color: ${TARGET_TEXT_COLOR} !important;

@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Global Black
 // @namespace    github.com/annaroblox
-// @version      1.8
+// @version      1.9
 // @description  A global black dark mode
 // @author       annaroblox
 // @match        */*
 // @grant        none
-// @run-at       document-idle
+// @run-at       document-start
 // @license MIT
 // @downloadURL https://update.greasyfork.org/scripts/553805/Global%20Black.user.js
 // @updateURL https://update.greasyfork.org/scripts/553805/Global%20Black.meta.js
@@ -25,7 +25,6 @@
     const TARGET_BORDER_COLOR = '#000000'; // change this if you want borders to be distinct
 
     const IGNORED_TAGS = ['IMG', 'PICTURE', 'VIDEO', 'CANVAS', 'SVG'];
- 
 
     // --- IMMEDIATE STYLE INJECTION (RUNS BEFORE DOM IS READY) ---
     // This is the most important part for an instant effect and preventing a "flash of white".

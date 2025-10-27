@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Global Black
 // @namespace    github.com/annaroblox
-// @version      1.1
+// @version      1.2
 // @description  A global black dark mode
 // @author       annaroblox
 // @match        */*
@@ -9,6 +9,8 @@
 // @run-at       document-idle
 // @run-at document idle
 // @license MIT
+// @downloadURL https://update.greasyfork.org/scripts/553805/Global%20Black.user.js
+// @updateURL https://update.greasyfork.org/scripts/553805/Global%20Black.meta.js
 // ==/UserScript==
 
 (function() {
@@ -35,7 +37,7 @@
             color-scheme: dark !important;
         }
         /* Instantly apply to the base elements to prevent flash of white */
-        html, body {
+        html, body, p, li { // included p and li since they are commonly associated with elements containing text
             background-color: ${TARGET_BACKGROUND_COLOR} !important;
             background: ${TARGET_BACKGROUND_COLOR} !important;
             color: ${TARGET_TEXT_COLOR} !important;

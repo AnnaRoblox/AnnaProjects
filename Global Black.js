@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Global Black
 // @namespace    github.com/annaroblox
-// @version      1.6
+// @version      1.7
 // @description  A global black dark mode
 // @author       annaroblox
 // @match        */*
@@ -26,9 +26,7 @@
 
     const IGNORED_TAGS = ['IMG', 'PICTURE', 'VIDEO', 'CANVAS', 'SVG'];
 
-    // *** NEW: Timer Configuration ***
-    const ENABLE_PERIODIC_RERUN = true; // Set to false to disable periodic re-runs
-    const RERUN_INTERVAL = 10000; // - adjust as needed (recomended to be more then 5 seconds)
+    // *** Removed: Timer Configuration - relying on MutationObserver for efficiency ***
 
     // --- IMMEDIATE STYLE INJECTION (RUNS BEFORE DOM IS READY) ---
     // This is the most important part for an instant effect and preventing a "flash of white".
@@ -168,44 +166,47 @@
         });
     }
 
+    /**
+     * Processes a list of newly added DOM nodes and their descendants.
+     * This function is typically called by the MutationObserver.
+     * @param {NodeList} nodes - A list of nodes that have been added to the DOM.
+     */
+    function processNewlyAddedNodes(nodes) {
+        nodes.forEach(node => {
+            applyBlackModeToTree(node);
+        });
+    }
+
     function runFullConversion() {
-        console.log("Pure Black Mode: Running full page conversion...");
+        console.log("Global Black: Running full page conversion...");
         applyBlackModeToTree(document.documentElement);
     }
 
-    // --- OBSERVER FOR DYNAMIC CONTENT ---
-    // This is the key to handling modern, dynamic websites.
-    const observer = new MutationObserver(mutations => {
-        // *** THIS IS THE CRITICAL FIX ***
-        // Use requestAnimationFrame to batch all mutations that happen in a single frame.
-        // This prevents performance issues and ensures the script doesn't miss anything
-        // on pages that add many elements at once.
-        window.requestAnimationFrame(() => {
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList') {
-                    // When new nodes are added, process them and all their children.
-                    mutation.addedNodes.forEach(node => {
-                        applyBlackModeToTree(node);
-                    });
-                } else if (mutation.type === 'attributes') {
-                    // If an element's class or style changes, its color might have changed.
-                    // Re-run the process on that single element.
-                    if (mutation.target) {
-                       processElement(mutation.target);
+        // --- OBSERVER FOR DYNAMIC CONTENT ---
+        // This is the key to handling modern, dynamic websites.
+        const observer = new MutationObserver(mutations => {
+            // Use requestAnimationFrame to batch all mutations that happen in a single frame.
+            // This prevents performance issues and ensures the script doesn't miss anything
+            // on pages that add many elements at once.
+            window.requestAnimationFrame(() => {
+                for (const mutation of mutations) {
+                    if (mutation.type === 'childList') {
+                        // When new nodes are added, process them and all their children.
+                        processNewlyAddedNodes(mutation.addedNodes);
+                    } else if (mutation.type === 'attributes') {
+                        // If an element's class or style changes, its color might have changed.
+                        // Re-run the process on that single element AND ITS DESCENDANTS.
+                        // This is crucial because a class/style change on a parent can affect children's computed styles.
+                        if (mutation.target) {
+                           applyBlackModeToTree(mutation.target); // Changed from processElement
+                        }
                     }
                 }
-            }
+            });
         });
-    });
 
-    // --- PERIODIC RE-RUN TIMER ---
-    let periodicTimer = null;
-    if (ENABLE_PERIODIC_RERUN) {
-        periodicTimer = setInterval(() => {
-            console.log("Pure Black Mode: Periodic re-run triggered...");
-            runFullConversion();
-        }, RERUN_INTERVAL);
-    }
+
+    // Relying solely on MutationObserver for better performance.
 
     // --- INITIALIZATION ---
     // The main styles are already injected. Now we wait for the DOM to be ready for deep traversal.
@@ -229,16 +230,14 @@
         if (observer) {
             observer.disconnect();
         }
-        if (periodicTimer) {
-            clearInterval(periodicTimer);
-        }
+        // Removed clearInterval for periodicTimer
         if (tempDiv && tempDiv.parentNode) {
             tempDiv.parentNode.removeChild(tempDiv);
         }
         if (style && style.parentNode) {
             style.parentNode.removeChild(style);
         }
-        console.log("Pure Black Mode: Cleaned up and disconnected.");
+        console.log("Global Black: Cleaned up and disconnected.");
     });
 
 })();

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Global Black
 // @namespace    github.com/annaroblox
-// @version      1.5
+// @version      1.6
 // @description  A global black dark mode
 // @author       annaroblox
 // @match        */*
@@ -28,7 +28,7 @@
 
     // *** NEW: Timer Configuration ***
     const ENABLE_PERIODIC_RERUN = true; // Set to false to disable periodic re-runs
-    const RERUN_INTERVAL = 100000; // - adjust as needed (recomended to be more then 5 seconds)
+    const RERUN_INTERVAL = 10000; // - adjust as needed (recomended to be more then 5 seconds)
 
     // --- IMMEDIATE STYLE INJECTION (RUNS BEFORE DOM IS READY) ---
     // This is the most important part for an instant effect and preventing a "flash of white".
@@ -40,8 +40,8 @@
             color-scheme: dark !important;
         }
         /* Instantly apply to the base elements to prevent flash of white */
-        html, #text,  body, section, article, header, footer, nav, main, aside,
-        ul, ol, li, dl, table, tr, td, th, thead, tbody, tfoot,
+        html, #text, body, mt-sm, section, article, header, footer, nav, main, aside,
+        ul, ol, li, dl, table, tr, td, th, thead, tbody, tfoot, style-scope,
         form, fieldset, button {
             background-color: ${TARGET_BACKGROUND_COLOR} !important;
             background: ${TARGET_BACKGROUND_COLOR} !important;

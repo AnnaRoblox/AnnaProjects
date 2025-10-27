@@ -40,7 +40,7 @@
             color-scheme: dark !important;
         }
         /* Instantly apply to the base elements to prevent flash of white */
-        html, span, #text,  body, section, article, header, footer, nav, main, aside,
+        html, #text,  body, section, article, header, footer, nav, main, aside,
         ul, ol, li, dl, table, tr, td, th, thead, tbody, tfoot,
         form, fieldset, button {
             background-color: ${TARGET_BACKGROUND_COLOR} !important;

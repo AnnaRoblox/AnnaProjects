@@ -7,9 +7,9 @@
 // @match        */*
 // @grant        none
 // @run-at       document-start
-// @license MIT
-// @downloadURL https://update.greasyfork.org/scripts/553805/Global%20Black.user.js
-// @updateURL https://update.greasyfork.org/scripts/553805/Global%20Black.meta.js
+// @license      MIT
+// @downloadURL  https://update.greasyfork.org/scripts/553805/Global%20Black.user.js
+// @updateURL    https://update.greasyfork.org/scripts/553805/Global%20Black.meta.js
 // ==/UserScript==
 
 (function () {
@@ -36,7 +36,7 @@
             color-scheme: dark !important;
         }
         /* Instantly apply to the base elements to prevent flash of white */
-        html, #text, body, mt-sm, section, article, header, footer, nav, main, aside,
+        html, #text, body, mt-sm, recent-posts,  article, header, footer, nav, main, aside,
         ul, ol, li, dl, table,  tr, td, th, thead, tbody, tfoot, style-scope,
         form, fieldset, button, section {
             background-color: ${TARGET_BACKGROUND_COLOR} !important;
@@ -241,8 +241,6 @@
     });
   });
 
-  // Relying solely on MutationObserver for better performance.
-
   // --- INITIALIZATION ---
   // The main styles are already injected. Now we wait for the DOM to be ready for deep traversal.
   if (document.readyState === "loading") {
@@ -253,6 +251,11 @@
     // If the script is injected after the page is loaded (e.g., via console).
     runFullConversion();
   }
+
+  // --- ADDED: Re-run the conversion after all resources have loaded ---
+  // This catches elements that are styled or loaded by JS after DOMContentLoaded.
+  window.addEventListener("load", runFullConversion);
+
 
   // Start observing for changes after the initial conversion.
   observer.observe(document.documentElement, {
@@ -267,6 +270,8 @@
     if (observer) {
       observer.disconnect();
     }
+    // Also remove the new load listener
+    window.removeEventListener("load", runFullConversion);
 
     if (tempDiv && tempDiv.parentNode) {
       tempDiv.parentNode.removeChild(tempDiv);

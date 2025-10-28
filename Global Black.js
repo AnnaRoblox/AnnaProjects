@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Global Black
 // @namespace    github.com/annaroblox
-// @version      2.0
+// @version      2.1
 // @description  A global black dark mode
 // @author       annaroblox
 // @match        */*
@@ -37,7 +37,7 @@
         }
         /* Instantly apply to the base elements to prevent flash of white */
         html, #text, body, mt-sm, recent-posts,  article, header, footer, nav, main, aside,
-        ul, ol, li, dl, table,  tr, td, th, thead, tbody, tfoot, style-scope,
+        ul, ol, li, dl, table,  tr, td, overlay, label, #content, theme-auto,  th, thead, tbody, tfoot, style-scope,
         form, fieldset, button, section {
             background-color: ${TARGET_BACKGROUND_COLOR} !important;
             background: ${TARGET_BACKGROUND_COLOR} !important;
@@ -45,7 +45,7 @@
         }
         /* Handle syntax highlighting blocks gracefully */
         pre, code {
-           background-color: #000000 !important; /* A very dark grey is often better than pure black for code */
+           background-color: #000000 !important;
            color: #D4D4D4 !important;
         }
     `;
@@ -203,6 +203,109 @@
   }
 
   /**
+   * Applies the dark theme logic to a given document (e.g., the main document or an iframe's document).
+   * @param {Document} doc - The document to process.
+   */
+  function applyThemeToDocument(doc) {
+    if (
+      !doc ||
+      !doc.documentElement ||
+      doc.documentElement.dataset.globalBlackApplied
+    ) {
+      return;
+    }
+    console.log(
+      "Global Black: Applying theme to new document...",
+      doc.location?.href,
+    );
+    doc.documentElement.dataset.globalBlackApplied = "true";
+
+    // 1. Inject the main style sheet into the new document.
+    const newStyle = doc.createElement("style");
+    newStyle.id = "pure-black-mode-global-style-injected";
+    newStyle.textContent = style.textContent; // `style` is the global style from the parent script.
+    doc.documentElement.appendChild(newStyle);
+
+    // 2. Run a full conversion on the new document's body.
+    applyBlackModeToTree(doc.documentElement);
+
+    // 3. Set up a new observer for dynamic content within that document.
+    const newObserver = new MutationObserver((mutations) => {
+      (doc.defaultView || window).requestAnimationFrame(() => {
+        // Use iframe's rAF if available
+        for (const mutation of mutations) {
+          if (mutation.type === "childList") {
+            processNewlyAddedNodes(mutation.addedNodes);
+          } else if (mutation.type === "attributes") {
+            if (mutation.target) {
+              applyBlackModeToTree(mutation.target);
+            }
+          }
+        }
+      });
+    });
+
+    newObserver.observe(doc.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    });
+
+    // When the iframe's window unloads, disconnect the observer.
+    doc.defaultView?.addEventListener(
+      "unload",
+      () => {
+        newObserver.disconnect();
+        console.log(
+          "Global Black: Cleaned up observer for document:",
+          doc.location?.href,
+        );
+      },
+      { once: true },
+    );
+  }
+
+  /**
+   * Finds and processes embeddable elements like iframes, frames, and objects.
+   * @param {HTMLElement} element - The embeddable element to process.
+   */
+  function processEmbed(element) {
+    if (element.dataset.globalBlackEmbedProcessed) {
+      return;
+    }
+    element.dataset.globalBlackEmbedProcessed = "true";
+
+    const setup = () => {
+      try {
+        const contentDoc = element.contentDocument;
+        if (contentDoc) {
+          applyThemeToDocument(contentDoc);
+        }
+      } catch (e) {
+        console.warn(
+          "Global Black: Could not access embed content. It may be cross-origin.",
+          element,
+        );
+      }
+    };
+
+    try {
+      const contentDoc = element.contentDocument;
+      if (contentDoc && contentDoc.readyState === "complete") {
+        setup();
+      } else {
+        element.addEventListener("load", setup, { once: true });
+      }
+    } catch (e) {
+      console.warn(
+        "Global Black: Could not access embed on initial check. It may be cross-origin.",
+        element,
+      );
+    }
+  }
+
+  /**
    * Processes a list of newly added DOM nodes and their descendants.
    * This function is typically called by the MutationObserver.
    * @param {NodeList} nodes - A list of nodes that have been added to the DOM.
@@ -210,12 +313,25 @@
   function processNewlyAddedNodes(nodes) {
     nodes.forEach((node) => {
       applyBlackModeToTree(node);
+
+      if (node.nodeType === 1) {
+        const tagName = node.tagName.toUpperCase();
+        if (["IFRAME", "FRAME", "EMBED", "OBJECT"].includes(tagName)) {
+          processEmbed(node);
+        }
+        node
+          .querySelectorAll?.("iframe, frame, embed, object")
+          .forEach(processEmbed);
+      }
     });
   }
 
   function runFullConversion() {
     console.log("Global Black: Running full page conversion...");
     applyBlackModeToTree(document.documentElement);
+    document
+      .querySelectorAll("iframe, frame, embed, object")
+      .forEach(processEmbed);
   }
 
   // --- OBSERVER FOR DYNAMIC CONTENT ---
@@ -255,7 +371,6 @@
   // --- ADDED: Re-run the conversion after all resources have loaded ---
   // This catches elements that are styled or loaded by JS after DOMContentLoaded.
   window.addEventListener("load", runFullConversion);
-
 
   // Start observing for changes after the initial conversion.
   observer.observe(document.documentElement, {

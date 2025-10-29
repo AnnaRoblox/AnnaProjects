@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Global Black Options</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Global Black Settings</h1>
+
+        <div class="backup-section">
+            <h2>Backup & Restore</h2>
+            <button id="exportRulesBtn">Export (JSON)</button>
+            <label class="import-label">
+                Import (JSON)
+                <input type="file" id="importRulesInput" accept=".json">
+            </label>
+        </div>
+
+        <div class="text-import-section">
+            <h2>Add Rules from Text</h2>
+            <p>
+                Enter rules one per line. Format: <code>[hostname]##[selector] [action] [css]</code><br>
+                Examples: <br>
+                <code>wikipedia.org##.infobox exclude</code> (Site-specific exclude)<br>
+                <code>##.cookie-banner force-black</code> (Global force-black)<br>
+            </p>
+            <textarea id="textImportArea" placeholder="Paste rules here..."></textarea>
+            <button id="applyTextImportBtn">Apply & Save</button>
+        </div>
+
+
+        <div class="tabs">
+            <button class="tab-link active" data-tab="global">Global Rules</button>
+            <button class="tab-link" data-tab="site">Site-Specific Rules</button>
+        </div>
+
+        <div id="global" class="tab-content active">
+            <h3>Rules that apply on all websites.</h3>
+            <table id="globalRulesTable">
+                <thead><tr><th>Selector</th><th>Action</th><th>Custom CSS</th><th></th></tr></thead>
+                <tbody><!-- Rules will be rendered here by JS --></tbody>
+            </table>
+        </div>
+
+        <div id="site" class="tab-content">
+            <div class="site-selector-header">
+                <h3>Rules for site:</h3>
+                <select id="siteSelector"></select>
+            </div>
+            <table id="siteRulesTable">
+                <thead><tr><th>Selector</th><th>Action</th><th>Custom CSS</th><th></th></tr></thead>
+                <tbody><!-- Rules will be rendered here by JS --></tbody>
+            </table>
+        </div>
+    </div>
+    <script src="options.js"></script>
+</body>
+</html>

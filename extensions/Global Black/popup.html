@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: sans-serif; width: 250px; padding: 10px; }
+    button { width: 100%; padding: 10px; margin-bottom: 10px; cursor: pointer; }
+    #rulesList { list-style: none; padding: 0; }
+    #rulesList li { background: #f0f0f0; padding: 5px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+    #rulesList code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    #rulesList .delete-btn { cursor: pointer; color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h3>Global Black Configurator</h3>
+  <button id="pickElementBtn">Pick an Element to Configure</button>
+  <hr>
+  <h4>Your Rules:</h4>
+  <ul id="rulesList"></ul>
+
+  <script src="popup.js"></script>
+</body>
+</html>

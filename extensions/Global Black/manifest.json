@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Global Black",
+  "version": "1.0",
+  "description": "A configurable global dark mode with advanced rule management.",
+  "author": "AnnaRoblox",
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "downloads"
+  ],
+  "host_permissions": [ "<all_urls>" ],
+  
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html"
+  },
+
+  "options_page": "options.html",
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+
+  "commands": {
+    "toggle-picker": {
+      "suggested_key": {
+        "default": "Alt+X",
+        "mac": "Command+Shift+X"
+      },
+      "description": "Activate the Element Picker"
+    }
+  }
+}

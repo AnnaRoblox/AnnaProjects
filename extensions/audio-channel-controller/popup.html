@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Audio Channel Control</title>
+  <style>
+    body {
+      width: 220px;
+      font-family: sans-serif;
+      text-align: center;
+    }
+    button {
+      width: 90%;
+      padding: 10px;
+      margin: 5px 0;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #f0f0f0;
+    }
+    #volume-control {
+      margin: 10px 0;
+      display: none; /* Initially hidden */
+    }
+    #volume-control label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    #volume-slider {
+      width: 90%;
+    }
+  </style>
+</head>
+<body>
+  <h3>Audio Channels</h3>
+  <button id="force-left">Force Left Channel</button>
+  <button id="force-right">Force Right Channel</button>
+
+  <hr>
+
+  <!-- New Volume Control Section -->
+  <div id="volume-control">
+    <label for="volume-slider">Volume</label>
+    <input type="range" id="volume-slider" min="0" max="2" step="0.05" value="1">
+  </div>
+
+  <button id="reset">Reset Audio</button>
+  <script src="popup.js"></script>
+</body>
+</html>

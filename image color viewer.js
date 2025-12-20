@@ -1,12 +1,12 @@
 // ==UserScript==
-// @name        image color viewer
-// @namespace   github.com/annaprojects
-// @version     1.4 
-// @description Adds context menu options to view an image in a new tab with dynamic background controls, and to change the background directly behind the image on the current page (white, black, transparent, reset). Also adds keyboard shortcuts for quick background toggling.
-// @author      annaroblox
-// @match       *://*/*
-// @grant       GM_registerMenuCommand
-// @grant       GM_openInTab
+// @name         image color viewer
+// @namespace    github.com/annaprojects
+// @version      1.5
+// @description  Adds context menu options to view an image in a new tab with dynamic background controls, and to change the background directly behind the image on the current page (white, black, transparent, reset). Exactly matches image dimensions.
+// @author       AnnaRoblox
+// @match        *://*/*
+// @grant        GM_registerMenuCommand
+// @grant        GM_openInTab
 // ==/UserScript==
 
 (function() {
@@ -22,31 +22,24 @@
 
     /**
      * Event listener for the 'contextmenu' event.
-     * When a user right-clicks, this function checks if the target is an image.
-     * If it is, both the image's source URL and the image DOM element are stored.
-     * Otherwise, both are reset to null.
-     * This listener is primarily for the Tampermonkey context menu commands.
      */
     document.addEventListener('contextmenu', function(e) {
         if (e.target.tagName === 'IMG') {
             imageUrl = e.target.src;
-            currentImageElement = e.target; // Store the actual image element
+            currentImageElement = e.target;
         } else {
             imageUrl = null;
-            currentImageElement = null; // Clear both if a non-image element is right-clicked
+            currentImageElement = null;
         }
-    }, true); // Use capture phase to ensure this runs before other context menu handlers
+    }, true);
 
     /**
-     * New Event listener for 'click' events to handle keyboard shortcuts.
-     * This allows users to quickly change the background of an image using
-     * Ctrl+Shift+Click, Alt+Shift+Click, or Alt+Click.
+     * Event listener for 'click' events to handle keyboard shortcuts.
      */
     document.addEventListener('click', function(e) {
-        // Check if the clicked element is an image
         if (e.target.tagName === 'IMG') {
             const imageElement = e.target;
-            let handled = false; // Flag to indicate if a shortcut was used
+            let handled = false;
 
             // Ctrl + Shift + Click: Set background to White
             if (e.ctrlKey && e.shiftKey) {
@@ -63,15 +56,10 @@
                 const parent = imageElement.parentNode;
                 let currentBgColor = '';
 
-                // Check if the image is already wrapped by our custom div
                 if (parent && parent.classList && parent.classList.contains(WRAPPER_CLASS)) {
-                    // Get the current background color of the wrapper
                     currentBgColor = parent.style.backgroundColor;
                 }
 
-                // Toggle logic: if current is black, go to white; otherwise, go to black
-                // This also handles cases where the background is transparent or default,
-                // making the first Alt+Click set it to black.
                 if (currentBgColor === 'black') {
                     setImageBackground(imageElement, 'white');
                 } else {
@@ -80,67 +68,40 @@
                 handled = true;
             }
 
-            // If a shortcut was used, prevent default browser actions (like opening image link)
-            // and stop event propagation to avoid conflicts with other handlers.
             if (handled) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
             }
         }
-    }, true); // Use capture phase to catch the event early
+    }, true);
 
     /**
-     * Registers a context menu command for "View Image in New Tab".
-     * When this command is selected, if an image URL is available, it opens the image
-     * viewer in a new tab with an initial white background. The new tab will have its
-     * own controls to change the background.
+     * Registers context menu commands.
      */
     GM_registerMenuCommand("View Image in New Tab", function() {
         if (imageUrl) {
-            // Open the image viewer in a new tab, defaulting to a white background.
-            // The new tab will contain controls to change its background dynamically.
             openImageViewer(imageUrl, 'white');
         }
     });
 
-    /**
-     * Registers a context menu command for "Set Image BG (White)".
-     * When selected, this applies a white background directly behind the clicked image
-     * on the current page.
-     */
     GM_registerMenuCommand("Set Image BG (White)", function() {
         if (currentImageElement) {
             setImageBackground(currentImageElement, 'white');
         }
     });
 
-    /**
-     * Registers a context menu command for "Set Image BG (Black)".
-     * When selected, this applies a black background directly behind the clicked image
-     * on the current page.
-     */
     GM_registerMenuCommand("Set Image BG (Black)", function() {
         if (currentImageElement) {
             setImageBackground(currentImageElement, 'black');
         }
     });
 
-    /**
-     * Registers a context menu command for "Set Image BG (Transparent)".
-     * When selected, this applies a checkerboard background directly behind the clicked image
-     * on the current page, simulating transparency.
-     */
     GM_registerMenuCommand("Set Image BG (Transparent)", function() {
         if (currentImageElement) {
             setImageBackground(currentImageElement, 'transparent');
         }
     });
 
-    /**
-     * Registers a context menu command for "Reset Image BG".
-     * When selected, this removes any custom background wrapper applied to the clicked image,
-     * returning it to its original state on the page.
-     */
     GM_registerMenuCommand("Reset Image BG", function() {
         if (currentImageElement) {
             resetImageBackground(currentImageElement);
@@ -148,11 +109,8 @@
     });
 
     /**
-     * Applies a background color or pattern behind the given image element on the current page.
-     * It either creates a new wrapper div or updates an existing one.
-     *
-     * @param {HTMLElement} imageElement - The <img> element to apply the background to.
-     * @param {string} bgColor - The desired background color ('white', 'black', or 'transparent').
+     * Applies a background color or pattern behind the given image element.
+     * Modified to match the image dimensions exactly without resizing or padding.
      */
     function setImageBackground(imageElement, bgColor) {
         const parent = imageElement.parentNode;
@@ -164,15 +122,15 @@
         } else {
             // Create a new wrapper div
             wrapper = document.createElement('div');
-            wrapper.classList.add(WRAPPER_CLASS); // Mark it with our custom class
-            wrapper.style.display = 'inline-flex'; // Use inline-flex to wrap content and allow centering
-            wrapper.style.alignItems = 'center';
-            wrapper.style.justifyContent = 'center';
-            wrapper.style.padding = '10px'; // Padding to show the background
-            wrapper.style.borderRadius = '8px'; // Rounded corners for the background
-            wrapper.style.boxShadow = '0 4px 10px rgba(0,0,0,0.2)'; // Subtle shadow
-            wrapper.style.transition = 'background-color 0.3s ease, background-image 0.3s ease'; // Smooth transitions
-            wrapper.style.lineHeight = '0'; // Prevent extra space below image due to line-height
+            wrapper.classList.add(WRAPPER_CLASS);
+
+            // Set display to inline-block so it wraps the image tightly
+            wrapper.style.display = 'inline-block';
+            wrapper.style.padding = '0'; // Remove padding so it matches image size exactly
+            wrapper.style.margin = '0';
+            wrapper.style.lineHeight = '0'; // Removes the small gap often found below images
+            wrapper.style.verticalAlign = 'middle';
+            wrapper.style.transition = 'background-color 0.3s ease, background-image 0.3s ease';
 
             // Insert the wrapper before the image, then append the image to the wrapper
             parent.insertBefore(wrapper, imageElement);
@@ -184,170 +142,128 @@
             wrapper.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)';
             wrapper.style.backgroundSize = '20px 20px';
             wrapper.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
-            wrapper.style.backgroundColor = ''; // Clear solid color if any
+            wrapper.style.backgroundColor = '';
         } else {
             wrapper.style.backgroundImage = 'none';
-            wrapper.style.backgroundSize = 'auto';
-            wrapper.style.backgroundPosition = 'auto';
             wrapper.style.backgroundColor = bgColor;
         }
+
+        // Ensure image retains its original display properties
+        imageElement.style.maxWidth = 'none';
+        imageElement.style.maxHeight = 'none';
     }
 
     /**
      * Resets the background of an image by removing the custom wrapper.
-     *
-     * @param {HTMLElement} imageElement - The <img> element whose background wrapper should be removed.
      */
     function resetImageBackground(imageElement) {
         const parent = imageElement.parentNode;
 
-        // Check if the parent is our custom wrapper
         if (parent && parent.classList && parent.classList.contains(WRAPPER_CLASS)) {
             const grandParent = parent.parentNode;
             if (grandParent) {
-                // Move the image back to its original parent's position
                 grandParent.insertBefore(imageElement, parent);
-                // Remove the wrapper div
                 grandParent.removeChild(parent);
+                // Reset any styles we applied to the image directly
+                imageElement.style.maxWidth = '';
+                imageElement.style.maxHeight = '';
             }
         }
     }
 
     /**
      * Opens a new tab with the image viewer HTML content.
-     * The HTML includes the image and controls to change the background color dynamically.
-     *
-     * @param {string} url - The URL of the image to display.
-     * @param {string} initialBgColor - The initial background color ('white', 'black', or 'transparent').
      */
     function openImageViewer(url, initialBgColor) {
-        // Construct the HTML content for the new image viewer tab.
-        // It includes basic styling, the image, and JavaScript functions for changing the background.
         const imageViewerHTML = `
             <!DOCTYPE html>
             <html>
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Image Viewer</title>
-                <!-- Link to Google Fonts for Inter font -->
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
                 <style>
-                    /* Basic body styling for centering content and smooth background transitions */
                     body {
-                        background-color: ${initialBgColor}; /* Set the initial background color */
+                        background-color: ${initialBgColor};
                         margin: 0;
                         display: flex;
-                        flex-direction: column; /* Stack controls and image vertically */
+                        flex-direction: column;
                         justify-content: center;
                         align-items: center;
-                        min-height: 100vh; /* Full viewport height */
-                        transition: background-color 0.3s ease; /* Smooth transition for background changes */
-                        font-family: 'Inter', sans-serif; /* Apply Inter font */
-                        color: #333; /* Default text color */
-                        overflow: hidden; /* Prevent scrollbars if image is slightly larger */
+                        min-height: 100vh;
+                        transition: background-color 0.3s ease;
+                        font-family: 'Inter', sans-serif;
+                        color: #333;
+                        overflow: auto; /* Changed to auto to allow scrolling if image is huge */
                     }
 
-                    /* Styling for the control buttons container */
                     .controls {
-                        position: fixed; /* Keep controls visible even when scrolling (though this page won't scroll much) */
-                        top: 20px; /* Position from the top */
-                        left: 50%; /* Center horizontally */
-                        transform: translateX(-50%); /* Adjust for true centering */
-                        background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent white background for controls */
+                        position: fixed;
+                        top: 20px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background-color: rgba(255, 255, 255, 0.9);
                         padding: 10px 20px;
-                        border-radius: 10px; /* Rounded corners for the control panel */
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Subtle shadow for depth */
-                        display: flex; /* Use flexbox for button layout */
-                        gap: 10px; /* Space between buttons */
-                        z-index: 1000; /* Ensure controls are on top of other content */
+                        border-radius: 10px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                        display: flex;
+                        gap: 10px;
+                        z-index: 1000;
                     }
 
-                    /* Styling for the individual background change buttons */
                     .controls button {
                         padding: 8px 15px;
-                        border: none; /* No default border */
-                        border-radius: 5px; /* Rounded corners for buttons */
-                        cursor: pointer; /* Indicate interactivity */
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
                         font-size: 14px;
                         font-weight: 500;
-                        transition: background-color 0.2s ease, transform 0.1s ease; /* Smooth hover and click effects */
-                        background-color: #007bff; /* Primary blue color for buttons */
-                        color: white; /* White text on buttons */
-                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Small shadow for buttons */
+                        transition: background-color 0.2s ease, transform 0.1s ease;
+                        background-color: #007bff;
+                        color: white;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                     }
 
-                    /* Hover effect for buttons */
                     .controls button:hover {
-                        background-color: #0056b3; /* Darker blue on hover */
-                        transform: translateY(-1px); /* Slight lift effect */
+                        background-color: #0056b3;
+                        transform: translateY(-1px);
                     }
 
-                    /* Active (clicked) effect for buttons */
-                    .controls button:active {
-                        transform: translateY(1px); /* Slight press effect */
-                    }
-
-                    /* Styling for the image itself */
                     img {
-                        max-width: 95%; /* Image takes up to 95% of the viewport width */
-                        max-height: 95vh; /* Image takes up to 95% of the viewport height */
-                        object-fit: contain; /* Ensures the entire image is visible within its bounds */
-                        border-radius: 8px; /* Rounded corners for the image */
-                        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); /* More prominent shadow for the image */
-                        margin-top: 80px; /* Push image down to clear controls */
+                        /* In the viewer tab, we keep a max-width to ensure it fits the screen,
+                           but you can change these to 'none' if you want full size only */
+                        max-width: 100%;
+                        display: block;
+                        margin-top: 80px;
                     }
 
-                    /* Responsive adjustments for smaller screens */
                     @media (max-width: 600px) {
-                        .controls {
-                            flex-direction: column; /* Stack buttons vertically on small screens */
-                            width: 80%; /* Wider control panel */
-                            top: 10px;
-                        }
-                        .controls button {
-                            width: 100%; /* Full width buttons */
-                        }
-                        img {
-                            margin-top: 150px; /* Adjust margin for stacked controls */
-                        }
+                        .controls { flex-direction: column; width: 80%; top: 10px; }
+                        .controls button { width: 100%; }
+                        img { margin-top: 180px; }
                     }
                 </style>
             </head>
             <body>
-                <!-- Control panel for changing background colors -->
                 <div class="controls">
-                    <button onclick="changeBg('white')">White Background</button>
-                    <button onclick="changeBg('black')">Black Background</button>
-                    <button onclick="changeBg('transparent')">Transparent Background</button>
+                    <button onclick="changeBg('white')">White</button>
+                    <button onclick="changeBg('black')">Black</button>
+                    <button onclick="changeBg('transparent')">Transparent</button>
                 </div>
 
-                <!-- The image display area -->
                 <img src="${url}" alt="Image Viewer">
 
                 <script>
-                    /**
-                     * JavaScript function to dynamically change the body's background.
-                     * This function is called by the buttons in the control panel within the new tab.
-                     * @param {string} color - The desired background color ('white', 'black', or 'transparent').
-                     */
                     function changeBg(color) {
                         const body = document.body;
                         if (color === 'transparent') {
-                            // For a 'transparent' background, apply a checkerboard pattern
-                            // This simulates transparency on a webpage that doesn't have a true transparent layer beneath it.
                             body.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)';
-                            body.style.backgroundSize = '20px 20px'; // Size of each checkerboard square
-                            body.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px'; // Offset for checkerboard pattern
-                            body.style.backgroundColor = ''; // Clear any solid background color
-                            body.style.color = '#333'; // Default text color for checkerboard
+                            body.style.backgroundSize = '20px 20px';
+                            body.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
+                            body.style.backgroundColor = '';
                         } else {
-                            // For solid colors, clear the checkerboard and set the solid color
-                            body.style.backgroundImage = 'none'; // Remove checkerboard pattern
-                            body.style.backgroundSize = 'auto';
-                            body.style.backgroundPosition = 'auto';
-                            body.style.backgroundColor = color; // Set the solid background color
-                            // Adjust text color for readability
-                            body.style.color = (color === 'black') ? '#eee' : '#333';
+                            body.style.backgroundImage = 'none';
+                            body.style.backgroundColor = color;
                         }
                     }
                 </script>
@@ -355,16 +271,10 @@
             </html>
         `;
 
-        // Create a Blob from the HTML string. This allows us to create a URL for the HTML content.
         const blob = new Blob([imageViewerHTML], { type: 'text/html' });
-        // Create a URL for the Blob. This URL can be opened in a new tab.
         const blobURL = URL.createObjectURL(blob);
-
-        // Open the new tab using Tampermonkey's GM_openInTab function.
         GM_openInTab(blobURL, { active: true, insert: false });
 
-        // Optional: Revoke the Blob URL after a short delay.
-        // This frees up memory, as the browser will have already loaded the content from the URL.
         setTimeout(() => {
             URL.revokeObjectURL(blobURL);
         }, 1000);

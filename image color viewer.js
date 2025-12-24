@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         image color viewer
 // @namespace    github.com/annaprojects
-// @version      1.6
-// @description  Adds context menu options and shortcuts to view images with white/black backgrounds. Includes "Both" side-by-side option in new tab.
+// @version      1.7
+// @description  Adds context menu options and shortcuts to view images with white/black/grey backgrounds. Includes "All" side-by-side option in new tab.
 // @author       AnnaRoblox
 // @match        *://*/*
 // @grant        GM_registerMenuCommand
@@ -39,9 +39,9 @@
             const imageElement = e.target;
             let handled = false;
 
-            // Ctrl + Alt + Click: Side-by-Side Dual View (Black Left, White Right)
+            // Ctrl + Alt + Click: Multi View (Black, White, Grey)
             if (e.ctrlKey && e.altKey) {
-                setDualBackground(imageElement);
+                setMultiBackground(imageElement);
                 handled = true;
             }
             // Ctrl + Shift + Click: Set background to White
@@ -54,7 +54,7 @@
                 setImageBackground(imageElement, 'black');
                 handled = true;
             }
-            // Alt + Click: Toggle background between White and Black
+            // Alt + Click: Toggle background between Black, White, and Grey
             else if (e.altKey && !e.shiftKey) {
                 const parent = imageElement.parentNode;
                 let currentBgColor = '';
@@ -63,8 +63,11 @@
                     currentBgColor = parent.style.backgroundColor;
                 }
 
+                // Cycle: Black -> White -> Grey -> Black (Matching the 'All' layout order)
                 if (currentBgColor === 'black') {
                     setImageBackground(imageElement, 'white');
+                } else if (currentBgColor === 'white') {
+                    setImageBackground(imageElement, 'rgb(128, 128, 128)');
                 } else {
                     setImageBackground(imageElement, 'black');
                 }
@@ -84,13 +87,14 @@
     GM_registerMenuCommand("View Image in New Tab", () => imageUrl && openImageViewer(imageUrl, 'white'));
     GM_registerMenuCommand("Set Image BG (White)", () => currentImageElement && setImageBackground(currentImageElement, 'white'));
     GM_registerMenuCommand("Set Image BG (Black)", () => currentImageElement && setImageBackground(currentImageElement, 'black'));
+    GM_registerMenuCommand("Set Image BG (Grey)", () => currentImageElement && setImageBackground(currentImageElement, 'rgb(128, 128, 128)'));
     GM_registerMenuCommand("Set Image BG (Transparent)", () => currentImageElement && setImageBackground(currentImageElement, 'transparent'));
     GM_registerMenuCommand("Reset Image BG", () => currentImageElement && resetImageBackground(currentImageElement));
 
     /**
-     * Side-by-Side view logic (Current Page)
+     * Multi-view logic (Current Page)
      */
-    function setDualBackground(imageElement) {
+    function setMultiBackground(imageElement) {
         if (imageElement.parentNode.classList.contains(WRAPPER_CLASS)) {
             resetImageBackground(imageElement);
         }
@@ -120,15 +124,21 @@
 
         const blackWrapper = createSubWrapper('black');
         const whiteWrapper = createSubWrapper('white');
-        const clonedImage = imageElement.cloneNode(true);
+        const greyWrapper = createSubWrapper('rgb(128, 128, 128)');
+
+        const clone1 = imageElement.cloneNode(true);
+        const clone2 = imageElement.cloneNode(true);
 
         parent.insertBefore(dualContainer, imageElement);
         blackWrapper.appendChild(imageElement);
-        whiteWrapper.appendChild(clonedImage);
+        whiteWrapper.appendChild(clone1);
+        greyWrapper.appendChild(clone2);
+
         dualContainer.appendChild(blackWrapper);
         dualContainer.appendChild(whiteWrapper);
+        dualContainer.appendChild(greyWrapper);
 
-        [imageElement, clonedImage].forEach(img => {
+        [imageElement, clone1, clone2].forEach(img => {
             img.style.cssText = "max-width: none; max-height: none; display: block; position: static; visibility: visible; opacity: 1;";
         });
     }
@@ -197,7 +207,7 @@
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>Image Viewer - Dual Mode</title>
+                <title>Image Viewer - Pro Mode</title>
                 <style>
                     body {
                         background-color: ${initialBgColor};
@@ -241,8 +251,8 @@
                         align-items: center;
                     }
 
-                    /* Dual View Styles */
-                    .dual-layout {
+                    /* Multi Layout Styles */
+                    .multi-layout {
                         display: flex;
                         gap: 20px;
                         padding: 20px;
@@ -250,7 +260,7 @@
                         border-radius: 10px;
                     }
                     .img-wrap { line-height: 0; }
-                    .dual-layout img { max-width: 45vw; height: auto; }
+                    .multi-layout img { max-width: 30vw; height: auto; }
 
                     /* Single View Styles */
                     .single-view img {
@@ -264,8 +274,9 @@
                 <div class="controls">
                     <button id="btn-white" onclick="setView('white')">White</button>
                     <button id="btn-black" onclick="setView('black')">Black</button>
+                    <button id="btn-grey" onclick="setView('grey')">Grey</button>
                     <button id="btn-trans" onclick="setView('transparent')">Transparent</button>
-                    <button id="btn-both" onclick="setView('both')">Both</button>
+                    <button id="btn-all" onclick="setView('all')">All</button>
                 </div>
 
                 <div id="viewContainer" class="single-view">
@@ -277,18 +288,18 @@
                     const container = document.getElementById('viewContainer');
 
                     function setView(mode) {
-                        // Reset active states
                         document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
                         document.getElementById('btn-' + mode.substring(0,5)).classList.add('active');
 
-                        if (mode === 'both') {
+                        if (mode === 'all') {
                             document.body.style.backgroundColor = '#222';
                             document.body.style.backgroundImage = 'none';
                             container.className = '';
                             container.innerHTML = \`
-                                <div class="dual-layout">
+                                <div class="multi-layout">
                                     <div class="img-wrap" style="background: black;"><img src="\${url}"></div>
                                     <div class="img-wrap" style="background: white;"><img src="\${url}"></div>
+                                    <div class="img-wrap" style="background: rgb(128,128,128);"><img src="\${url}"></div>
                                 </div>
                             \`;
                         } else {
@@ -302,12 +313,11 @@
                                 b.style.backgroundColor = '';
                             } else {
                                 b.style.backgroundImage = 'none';
-                                b.style.backgroundColor = mode;
+                                b.style.backgroundColor = (mode === 'grey' ? 'rgb(128,128,128)' : mode);
                             }
                         }
                     }
 
-                    // Set initial active button
                     document.getElementById('btn-white').classList.add('active');
                 <\/script>
             </body>

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Roblox Mass Appeal
 // @namespace    github.com/annaroblox
-// @version      1.7
+// @version      1.8
 // @description  Adds a button to appeal all appealable items on the Roblox violations page with a custom message. Sends appeals concurrently.
 // @author       AnnaRoblox
 // @match        *://*.roblox.com/report-appeals*
@@ -22,7 +22,7 @@
     console.log("Roblox Mass Appeal [v1.8]: Script active. Waiting for page content...");
 
     // --- Configuration ---
-    const APPEAL_MESSAGE_PLACEHOLDER = "I believe this moderation wes a mistake. I respectfully request a routew. Thank you";
+    const APPEAL_MESSAGE_PLACEHOLDER = "I believe this moderation wes a mistake. I respectfully request a review. Thank you";
 
     // --- UI and Styling ---
     function addAppealUI(injectionPoint) {

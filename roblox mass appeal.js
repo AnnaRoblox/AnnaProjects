@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         Roblox Mass Appeal
 // @namespace    github.com/annaroblox
-// @version      1.6
-// @description  Adds a button to appeal all appealable items on the Roblox violations page with a custom message.
+// @version      1.7
+// @description  Adds a button to appeal all appealable items on the Roblox violations page with a custom message. Sends appeals concurrently.
 // @author       AnnaRoblox
-// @license MIT
 // @match        *://*.roblox.com/report-appeals*
+// @match        *://*.roblox.com/pt/report-appeals*
+// @match        *://*.roblox.com/ar/report-appeals*
+// @match        *://*.roblox.com/vi/report-appeals*
+// @match        *://*.roblox.com/*/report-appeals*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
 // @connect      apis.roblox.com
@@ -16,10 +19,10 @@
 (function() {
     'use strict';
 
-    console.log("Roblox Mass Appeal [v1.6]: Script active. Waiting for page content...");
+    console.log("Roblox Mass Appeal [v1.8]: Script active. Waiting for page content...");
 
     // --- Configuration ---
-    const APPEAL_MESSAGE_PLACEHOLDER = "I believe this moderation action was applied in error. I have reviewed the Roblox Community Standards and I do not think my content/behavior violated them. I would appreciate it if you would review this case again. Thank you.";
+    const APPEAL_MESSAGE_PLACEHOLDER = "I believe this moderation wes a mistake. I respectfully request a routew. Thank you";
 
     // --- UI and Styling ---
     function addAppealUI(injectionPoint) {
@@ -30,7 +33,7 @@
         container.id = 'mass-appeal-container';
         container.innerHTML = `
             <h2>Mass Appeal Tool</h2>
-            <p>Enter your appeal message below and click "Appeal All Found Items".</p>
+            <p>Enter your appeal message below and click "Appeal All Found Items". Appeals will be sent concurrently (at the same time).</p>
             <textarea id="mass-appeal-message" placeholder="Enter your appeal message here...">${APPEAL_MESSAGE_PLACEHOLDER}</textarea>
             <button id="mass-appeal-button">Appeal All Found Items</button>
             <div id="mass-appeal-status"></div>
@@ -84,28 +87,80 @@
         logStatus(`User ID: ${userId}`);
         logStatus('Finding violation links...');
 
-        // We now look for 'a' tags where the href attribute STARTS WITH '#/v/'
         const violationLinks = Array.from(document.querySelectorAll('a[href^="#/v/"]'));
-
-        // The extraction logic //
         const violationIds = [...new Set(violationLinks.map(link => link.href.split('#/v/')[1]).filter(id => id))];
 
-        if (violationIds.length === 0) { logStatus('No appealable violation links found on the page.', true); button.disabled = false; button.innerText = 'Appeal All Found Items'; return; }
-
-        logStatus(`Found ${violationIds.length} unique violations to appeal.`);
-        for (const [index, violationId] of violationIds.entries()) {
-            logStatus(`[${index + 1}/${violationIds.length}] Appealing: ${violationId}`);
-            try {
-                await sendAppealRequest(userId, violationId, message, csrfToken);
-                logStatus(`[${index + 1}/${violationIds.length}] SUCCESS: ${violationId}`, false);
-            } catch (error) { logStatus(`[${index + 1}/${violationIds.length}] FAILED: ${violationId}: ${error}`, true); }
+        if (violationIds.length === 0) {
+            logStatus('No appealable violation links found on the page.', true);
+            button.disabled = false;
+            button.innerText = 'Appeal All Found Items';
+            return;
         }
+
+        logStatus(`Found ${violationIds.length} unique violations. Dispatching all appeal requests concurrently...`);
+
+        // --- CONCURRENT REQUEST LOGIC ---
+        // 1. We use .map() to iterate over each violationId and immediately start a 'sendAppealRequest'.
+        //    .map() does NOT wait for each request to finish. It just collects the Promises that 'sendAppealRequest' returns.
+        const appealPromises = violationIds.map((violationId, index) => {
+            return sendAppealRequest(userId, violationId, message, csrfToken)
+                .then(response => {
+                    logStatus(`[${index + 1}/${violationIds.length}] SUCCESS: Appeal sent for ${violationId}`, false);
+                })
+                .catch(error => {
+                    logStatus(`[${index + 1}/${violationIds.length}] FAILED: Appeal for ${violationId}: ${error}`, true);
+                    // We catch errors here so that a single failed request doesn't stop all the others (Promise.all behavior).
+                });
+        });
+
+        logStatus('All requests sent. Waiting for all server responses...');
+
+        // 2. Promise.all() waits for ALL promises in the 'appealPromises' array to either be resolved (success) or rejected (fail).
+        //    Since we started all the requests in the .map() loop above, this is where we wait for them to finish in parallel.
+        await Promise.all(appealPromises);
+
         logStatus('All appeals processed. Reloading page in 5 seconds...');
-        button.innerText = 'Finished!'; setTimeout(() => location.reload(), 5000);
+        button.innerText = 'Finished!';
+        setTimeout(() => location.reload(), 5000);
     }
 
     function sendAppealRequest(userId, violationId, message, csrfToken) {
-        return new Promise((resolve, reject) => { GM_xmlhttpRequest({ method: "POST", url: `https://apis.roblox.com/moderation-appeal-service/v2/users/${userId}/appeals`, headers: { "Content-Type": "application/json;charset=UTF-8", "Accept": "application/json, text/plain, */*", "x-csrf-token": csrfToken, "Referer": "https://www.roblox.com/", }, data: JSON.stringify({ appeal: { violation: `users/${userId}/violations/${violationId}`, message: message }}), withCredentials: true, onload: r => { if (r.status >= 200 && r.status < 300) { resolve(JSON.parse(r.responseText)); } else { let e = `Status ${r.status}`; try { e += `: ${JSON.parse(r.responseText).message || 'Unknown'}`; } catch { e += ` - ${r.statusText}`; } reject(e); } }, onerror: r => reject(`Network error: ${r.statusText}`) }); });
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: "POST",
+                url: `https://apis.roblox.com/moderation-appeal-service/v2/users/${userId}/appeals`,
+                headers: {
+                    "Content-Type": "application/json;charset=UTF-8",
+                    "Accept": "application/json, text/plain, */*",
+                    "x-csrf-token": csrfToken,
+                    "Referer": "https://www.roblox.com/",
+                },
+                data: JSON.stringify({
+                    appeal: {
+                        violation: `users/${userId}/violations/${violationId}`,
+                        message: message
+                    }
+                }),
+                withCredentials: true,
+                onload: r => {
+                    if (r.status >= 200 && r.status < 300) {
+                        resolve(JSON.parse(r.responseText));
+                    } else {
+                        let e = `Status ${r.status}`;
+                        try {
+                            const errorResponse = JSON.parse(r.responseText);
+                            // Extract more specific Roblox API error messages if available
+                            const details = errorResponse.errors?.[0]?.message || errorResponse.message || 'Unknown error';
+                            e += `: ${details}`;
+                        } catch {
+                            e += ` - ${r.statusText}`;
+                        }
+                        reject(e);
+                    }
+                },
+                onerror: r => reject(`Network error: ${r.statusText}`)
+            });
+        });
     }
 
     // --- ROBUST UI INJECTION LOGIC ---
@@ -113,7 +168,11 @@
         const selectors = ['#report-appeals-app', '.report-appeals-content', 'div[role="main"]', '#container-main .content', '#content', '#app', '#root'];
         for (const selector of selectors) {
             const element = document.querySelector(selector);
-            if (element) { console.log(`Roblox Mass Appeal: Found injection point with selector: "${selector}"`); addAppealUI(element); return true; }
+            if (element) {
+                console.log(`Roblox Mass Appeal: Found injection point with selector: "${selector}"`);
+                addAppealUI(element);
+                return true;
+            }
         }
         return false;
     }
@@ -122,11 +181,14 @@
     const maxAttempts = 40;
     const interval = setInterval(() => {
         attempts++;
-        if (findAndInjectUI()) { clearInterval(interval); }
-        else if (attempts > maxAttempts) {
+        if (findAndInjectUI()) {
+            clearInterval(interval);
+        } else if (attempts > maxAttempts) {
             clearInterval(interval);
             console.error("Roblox Mass Appeal: Timed out. Trying last-resort injection into <body>.");
-            if (!document.getElementById('mass-appeal-container')) { addAppealUI(document.body); }
+            if (!document.getElementById('mass-appeal-container')) {
+                addAppealUI(document.body);
+            }
         }
     }, 500);
 

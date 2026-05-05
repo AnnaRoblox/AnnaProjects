@@ -16,7 +16,7 @@
 (function () {
     'use strict';
 
-    console.log("Roblox Mass Appeal [v2.1]: Script active.");
+    console.log("Roblox Mass Appeal [v2.0]: Script active.");
 
     const APPEAL_MESSAGE_PLACEHOLDER = "I believe this moderation was a mistake. I respectfully request a review. Thank you";
 
@@ -67,7 +67,7 @@
         const container = document.createElement('div');
         container.id = 'mass-appeal-container';
         container.innerHTML = `
-            <h2>Mass Appeal Tool v2.1</h2>
+            <h2>Mass Appeal Tool v2.0</h2>
             <p>Enter message and click the button. Now with auto token retry on 403.</p>
             <textarea id="mass-appeal-message" placeholder="Enter your appeal message here...">${APPEAL_MESSAGE_PLACEHOLDER}</textarea>
             <button id="mass-appeal-button">Appeal All Found Items</button>

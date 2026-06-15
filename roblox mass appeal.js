@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Roblox Mass Appeal
 // @namespace    github.com/annaroblox
-// @version      2.1
-// @description  Adds a button to appeal all appealable items with concurrent requests. Improved X-CSRF handling.
+// @version      2.2
+// @description  Adds a button to appeal all appealable items with concurrent requests. Tracks appeal counts and handles maxed-out violations.
 // @author       AnnaRoblox
 // @match        *://*.roblox.com/report-appeals*
 // @match        *://*.roblox.com/*/report-appeals*
@@ -10,26 +10,66 @@
 // @grant        GM_addStyle
 // @connect      apis.roblox.com
 // @connect      auth.roblox.com
+// @connect      github.com
+// @connect      raw.githubusercontent.com
+// @connect      objects.githubusercontent.com
 // @run-at       document-start
-// @downloadURL https://update.greasyfork.org/scripts/554845/Roblox%20Mass%20Appeal.user.js
-// @updateURL https://update.greasyfork.org/scripts/554845/Roblox%20Mass%20Appeal.meta.js
 // ==/UserScript==
 
 (function () {
     'use strict';
-
-    console.log("Roblox Mass Appeal [v2.1]: Script active.");
+    console.log("Roblox Mass Appeal [v2.2]: Script active.");
 
     const APPEAL_MESSAGE_PLACEHOLDER = "I believe this moderation was a mistake. I respectfully request a review. Thank you";
+    const MAX_VIOLATIONS_BEFORE_CLEAR = 500;
+    const REMOTE_MESSAGES_URL = "https://github.com/AnnaRoblox/AnnaProjects/raw/refs/heads/main/roblox%20appeal%20messages.txt";
 
-    const DEFAULT_MESSAGES = [
-        APPEAL_MESSAGE_PLACEHOLDER,
-        "This asset was falsely flagged for this moderation category.",
-        "Please review it manually, as I believe it does not violate Roblox's policies.",
-        "This asset appears to have been incorrectly flagged and does not violate Roblox's policies.",
-        "I believe this moderation action was applied in error and request a manual review of the asset.",
-        "This asset does not match the moderation category it was flagged under and should be reviewed manually."
-    ];
+    function getAppealHistory() {
+        return JSON.parse(localStorage.getItem('mass-appeal-history') || '{}');
+    }
+
+    function saveAppealHistory(history) {
+        localStorage.setItem('mass-appeal-history', JSON.stringify(history));
+    }
+
+    // Default appeal messages are fetched from the remote list (one message per line).
+    let DEFAULT_MESSAGES = [APPEAL_MESSAGE_PLACEHOLDER];
+    let remoteMessagesLoaded = false;
+
+    function fetchRemoteMessages() {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: "GET",
+                url: REMOTE_MESSAGES_URL,
+                onload: function (r) {
+                    if (r.status >= 200 && r.status < 300) {
+                        const lines = r.responseText
+                            .split(/\r?\n/)
+                            .map(line => line.trim())
+                            .filter(line => line.length > 0);
+                        resolve(lines);
+                    } else {
+                        reject(`HTTP ${r.status}`);
+                    }
+                },
+                onerror: () => reject("Network error while fetching remote messages")
+            });
+        });
+    }
+
+    async function loadRemoteMessages() {
+        try {
+            const lines = await fetchRemoteMessages();
+            if (lines.length > 0) {
+                DEFAULT_MESSAGES = lines;
+                remoteMessagesLoaded = true;
+                console.log(`Roblox Mass Appeal [v2.2]: Loaded ${lines.length} default messages from remote list.`);
+            }
+        } catch (e) {
+            console.warn("Roblox Mass Appeal [v2.2]: Failed to load remote messages -", e);
+        }
+        return DEFAULT_MESSAGES;
+    }
 
     let currentCsrfToken = null;
 
@@ -87,13 +127,10 @@
     async function getValidToken() {
         let token = getMetaCsrf() || currentCsrfToken;
         if (token) return token;
-
         try {
             token = await fetchFreshCsrfToken();
-            console.log("✅ Got fresh CSRF token");
             return token;
         } catch (e) {
-            console.error("Failed to get token:", e);
             throw e;
         }
     }
@@ -101,27 +138,23 @@
     function renderCustomMessages() {
         const listContainer = document.getElementById('mass-appeal-custom-list');
         if (!listContainer) return;
-
         listContainer.innerHTML = '';
         const custom = getCustomMessages();
-
         if (custom.length === 0) {
             listContainer.innerHTML = '<p style="color:#aaa; font-style:italic; font-size: 13px; text-align: center; margin: 10px 0;">No custom messages added yet.</p>';
             return;
         }
-
         custom.forEach((msg, idx) => {
             const item = document.createElement('div');
             item.className = 'custom-message-item';
             item.innerHTML = `
                 <span class="custom-message-text">${escapeHTML(msg)}</span>
-                <button class="custom-message-delete" data-index="${idx}" type="button">❌</button>
+                <button class="custom-message-delete" data-index="${idx}" type="button">\u274C</button>
             `;
             listContainer.appendChild(item);
         });
-
         listContainer.querySelectorAll('.custom-message-delete').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function () {
                 const index = parseInt(this.getAttribute('data-index'), 10);
                 const current = getCustomMessages();
                 current.splice(index, 1);
@@ -131,27 +164,56 @@
         });
     }
 
+    function renderDefaultMessages() {
+        const listContainer = document.getElementById('mass-appeal-defaults-list');
+        if (!listContainer) return;
+        listContainer.innerHTML = '<p style="color:#aaa; font-style:italic; font-size: 13px; text-align: center; margin: 10px 0;">Loading default messages...</p>';
+
+        const render = () => {
+            listContainer.innerHTML = '';
+            if (!DEFAULT_MESSAGES || DEFAULT_MESSAGES.length === 0) {
+                listContainer.innerHTML = '<p style="color:#f04747; font-size: 13px; text-align: center; margin: 10px 0;">No default messages available.</p>';
+                return;
+            }
+            if (!remoteMessagesLoaded) {
+                const note = document.createElement('p');
+                note.style.cssText = 'color:#faa61a; font-size: 12px; font-style: italic; text-align: center; margin: 0 0 8px 0;';
+                note.textContent = 'Could not load remote list \u2014 showing fallback message(s).';
+                listContainer.appendChild(note);
+            }
+            DEFAULT_MESSAGES.forEach((msg, idx) => {
+                const item = document.createElement('div');
+                item.className = 'default-message-item';
+                item.innerHTML = `<span class="default-message-num">${idx + 1}.</span>${escapeHTML(msg)}`;
+                listContainer.appendChild(item);
+            });
+        };
+
+        if (remoteMessagesLoaded) {
+            render();
+        } else {
+            loadRemoteMessages().then(render).catch(render);
+        }
+    }
+
     function addAppealUI(injectionPoint) {
         if (document.getElementById('mass-appeal-container')) return;
-
         const container = document.createElement('div');
         container.id = 'mass-appeal-container';
         container.innerHTML = `
             <div class="mass-appeal-header">
-                <h2>Mass Appeal Tool v2.1</h2>
-                <button id="mass-appeal-settings-btn" type="button">⚙️ Settings</button>
+                <h2>Mass Appeal Tool v2.2</h2>
+                <button id="mass-appeal-settings-btn" type="button">\u2699\uFE0F Settings</button>
             </div>
-            <p>Enter message and click the button. Now with auto token retry on 403.</p>
+            <p>Enter message and click the button. Re-appeals denied items, skips accepted/maxed appeals.</p>
             <textarea id="mass-appeal-message" placeholder="Enter your appeal message here...">${APPEAL_MESSAGE_PLACEHOLDER}</textarea>
-
             <div class="mass-appeal-controls">
                 <label class="toggle-container">
                     <input type="checkbox" id="mass-appeal-randomize">
                     Randomize appeal message
                 </label>
-                <button id="mass-appeal-button">Appeal All Found Items</button>
+                <button id="mass-appeal-button">Appeal All Valid Items</button>
             </div>
-
             <div id="mass-appeal-settings-panel" style="display: none;">
                 <h3>Custom Random Appeal Messages</h3>
                 <div id="mass-appeal-custom-list"></div>
@@ -159,9 +221,13 @@
                     <textarea id="mass-appeal-new-message" placeholder="Type a new appeal message to add to pool..."></textarea>
                     <button id="mass-appeal-add-btn" type="button">Add Message</button>
                 </div>
+                <hr class="mass-appeal-divider">
+                <h3>Default Messages (from remote list)</h3>
+                <button id="mass-appeal-list-defaults-btn" type="button">List current default messages</button>
+                <div id="mass-appeal-defaults-list" style="display: none;"></div>
+                <hr class="mass-appeal-divider">
                 <button id="mass-appeal-settings-close" type="button">Close Settings</button>
             </div>
-
             <div id="mass-appeal-status"></div>
         `;
         injectionPoint.prepend(container);
@@ -179,7 +245,6 @@
             #mass-appeal-button:hover { background:#677bc4; }
             #mass-appeal-button:disabled { background:#555; cursor:not-allowed; }
             #mass-appeal-status { margin-top:15px; padding:12px; background:#23272a; border-radius:4px; max-height:350px; overflow-y:auto; font-family:monospace; }
-
             #mass-appeal-settings-panel { background: #23272a; border: 1px solid #555; border-radius: 6px; padding: 15px; margin-top: 15px; text-align: left; }
             #mass-appeal-settings-panel h3 { margin-top: 0; margin-bottom: 10px; font-size: 15px; color: #fff; }
             #mass-appeal-custom-list { margin-bottom: 15px; max-height: 150px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; padding: 5px; background: #1e2124; }
@@ -194,19 +259,23 @@
             #mass-appeal-add-btn:hover { background: #3ca374; }
             #mass-appeal-settings-close { background: #747f8d; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; }
             #mass-appeal-settings-close:hover { background: #5f6b76; }
+            .mass-appeal-divider { border: none; border-top: 1px solid #444; margin: 15px 0; }
+            #mass-appeal-list-defaults-btn { background: #5865f2; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+            #mass-appeal-list-defaults-btn:hover { background: #4752c4; }
+            #mass-appeal-defaults-list { margin-top: 12px; max-height: 200px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; padding: 5px; background: #1e2124; }
+            .default-message-item { padding: 6px; border-bottom: 1px solid #333; font-size: 13px; color: #dcddde; word-break: break-word; text-align: left; }
+            .default-message-item:last-child { border-bottom: none; }
+            .default-message-num { color: #7289da; font-weight: bold; margin-right: 6px; }
         `);
 
-        // Checkbox persistence loading
         const randomizeCheckbox = document.getElementById('mass-appeal-randomize');
         randomizeCheckbox.checked = localStorage.getItem('mass-appeal-randomize-enabled') === 'true';
         randomizeCheckbox.addEventListener('change', (e) => {
             localStorage.setItem('mass-appeal-randomize-enabled', e.target.checked);
         });
 
-        // Register action events
         document.getElementById('mass-appeal-button').addEventListener('click', handleAppealAll);
 
-        // Settings panel open/close actions
         document.getElementById('mass-appeal-settings-btn').addEventListener('click', () => {
             const panel = document.getElementById('mass-appeal-settings-panel');
             panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
@@ -217,7 +286,19 @@
             document.getElementById('mass-appeal-settings-panel').style.display = 'none';
         });
 
-        // Add custom message action
+        document.getElementById('mass-appeal-list-defaults-btn').addEventListener('click', () => {
+            const list = document.getElementById('mass-appeal-defaults-list');
+            const btn = document.getElementById('mass-appeal-list-defaults-btn');
+            if (list.style.display === 'none') {
+                list.style.display = 'block';
+                btn.textContent = 'Hide default messages';
+                renderDefaultMessages();
+            } else {
+                list.style.display = 'none';
+                btn.textContent = 'List current default messages';
+            }
+        });
+
         document.getElementById('mass-appeal-add-btn').addEventListener('click', () => {
             const textInput = document.getElementById('mass-appeal-new-message');
             const val = textInput.value.trim();
@@ -262,12 +343,12 @@
                     } else if (r.status === 403) {
                         const newToken = r.responseHeaders.match(/x-csrf-token:\s*([^\r\n]+)/i)?.[1];
                         if (newToken) currentCsrfToken = newToken.trim();
-                        reject({status: 403, body: r.responseText, newToken});
+                        reject({ status: 403, body: r.responseText, newToken });
                     } else {
-                        reject({status: r.status, body: r.responseText || r.statusText});
+                        reject({ status: r.status, body: r.responseText || r.statusText });
                     }
                 },
-                onerror: () => reject({status: 0, body: "Network error"})
+                onerror: () => reject({ status: 0, body: "Network error" })
             });
         });
     }
@@ -281,12 +362,21 @@
         button.disabled = true;
         button.textContent = 'Processing...';
         statusDiv.innerHTML = '';
-
         const log = (text, isError = false) => logStatus(statusDiv, text, isError);
 
         if (!randomize && !message) {
             log("Message cannot be empty!", true);
             resetButton(); return;
+        }
+
+        if (randomize && !remoteMessagesLoaded) {
+            log("\u{1F4E5} Loading default appeal messages from remote list...");
+            await loadRemoteMessages();
+            if (remoteMessagesLoaded) {
+                log(`\u2705 Loaded ${DEFAULT_MESSAGES.length} default messages.`);
+            } else {
+                log("\u26A0\uFE0F Could not load remote messages, using fallback.", true);
+            }
         }
 
         const userId = getUserId();
@@ -295,65 +385,97 @@
             resetButton(); return;
         }
 
-        log(`User ID: ${userId}`);
+        const allViolationItems = Array.from(document.querySelectorAll('a[href^="#/v/"]'));
+
+        // --- Clear stored history if the user changed or too many violations are present ---
+        let appealHistory = getAppealHistory();
+        const lastUserId = localStorage.getItem('mass-appeal-last-userid');
+
+        if (lastUserId && lastUserId !== String(userId)) {
+            appealHistory = {};
+            log(`\u{1F501} User ID changed (${lastUserId} \u2192 ${userId}). Cleared stored violations.`);
+        }
+        if (allViolationItems.length >= MAX_VIOLATIONS_BEFORE_CLEAR) {
+            appealHistory = {};
+            log(`\u{1F501} ${allViolationItems.length} violations found (\u2265 ${MAX_VIOLATIONS_BEFORE_CLEAR}). Cleared stored violations.`);
+        }
+        localStorage.setItem('mass-appeal-last-userid', String(userId));
+        saveAppealHistory(appealHistory);
 
         let csrfToken;
         try {
             csrfToken = await getValidToken();
-            log("✅ CSRF token ready");
         } catch (e) {
-            log("❌ Failed to get CSRF token", true);
+            log("\u274C Failed to get CSRF token", true);
             resetButton(); return;
         }
 
-        const violationLinks = Array.from(document.querySelectorAll('a[href^="#/v/"]'));
-        const violationIds = [...new Set(violationLinks.map(link => link.href.split('#/v/')[1]).filter(Boolean))];
+        const validViolationLinks = allViolationItems.filter(link => {
+            const text = link.textContent.toLowerCase();
+            const id = link.href.split('#/v/')[1];
+            if (!id) return false;
 
-        if (violationIds.length === 0) {
-            log("No violations found on this page.", true);
+            // Permanently completed (accepted, or server said no further appeals allowed) -> skip forever.
+            if (appealHistory[id] === 'completed') return false;
+
+            // "appeal accepted" -> mark complete and never appeal again.
+            if (text.includes("appeal accepted")) {
+                appealHistory[id] = 'completed';
+                return false;
+            }
+
+            // A submitted appeal still pending review -> skip until it resolves.
+            if (text.includes("appeal received") || text.includes("appeal recieved")) {
+                return false;
+            }
+
+            // Everything else ("appeal denied", "see details", fresh items, etc.) -> appeal it.
+            return true;
+        });
+
+        const tasks = [...new Set(validViolationLinks.map(link => link.href.split('#/v/')[1]).filter(Boolean))];
+
+        if (tasks.length === 0) {
+            log("No new valid/appealable violations found.", true);
+            saveAppealHistory(appealHistory);
             resetButton(); return;
         }
-
-        log(`Found ${violationIds.length} violations. Sending...`);
 
         const messagePool = getAllMessages();
 
-        for (let i = 0; i < violationIds.length; i++) {
-            const id = violationIds[i];
+        for (let i = 0; i < tasks.length; i++) {
+            const id = tasks[i];
             let attempts = 0;
             const maxAttempts = 2;
-
-            let messageToSend = message;
-            if (randomize) {
-                if (messagePool.length > 0) {
-                    messageToSend = messagePool[Math.floor(Math.random() * messagePool.length)];
-                } else {
-                    messageToSend = APPEAL_MESSAGE_PLACEHOLDER;
-                }
-            }
+            let messageToSend = randomize ? messagePool[Math.floor(Math.random() * messagePool.length)] : message;
 
             while (attempts < maxAttempts) {
                 try {
                     await sendAppealRequest(userId, id, messageToSend, csrfToken);
-                    log(`[${i+1}/${violationIds.length}] ✅ SUCCESS: ${id} ("${messageToSend.substring(0, 45)}...")`);
+                    log(`[${i + 1}/${tasks.length}] \u2705 SUCCESS: ${id}`);
                     break;
                 } catch (err) {
                     attempts++;
                     if (err.status === 403 && attempts < maxAttempts) {
-                        log(`[${i+1}/${violationIds.length}] 403 - Refreshing token and retrying...`, false);
                         if (err.newToken) csrfToken = err.newToken;
                         else csrfToken = await getValidToken();
                         continue;
                     }
-                    log(`[${i+1}/${violationIds.length}] ❌ FAILED: ${id} → ${err.body || err.status}`, true);
+                    if (typeof err.body === 'string' && err.body.includes('failed precondition: no further appeal is allowed for violation')) {
+                        appealHistory[id] = 'completed';
+                        log(`[${i + 1}/${tasks.length}] \u2139\uFE0F Violation ${id} reached max appeals. Marked complete; won't retry.`, false);
+                    } else {
+                        log(`[${i + 1}/${tasks.length}] \u274C FAILED: ${id} \u2192 ${err.body || err.status}`, true);
+                    }
                     break;
                 }
             }
         }
 
-        log("✅ All done! Reloading in 5 seconds...");
+        saveAppealHistory(appealHistory);
+        log("\u2705 All done! Reloading...");
         button.textContent = 'Finished!';
-        setTimeout(() => location.reload(), 5000);
+        setTimeout(() => location.reload(), 3000);
     }
 
     function getUserId() {
@@ -365,11 +487,10 @@
         const btn = document.getElementById('mass-appeal-button');
         if (btn) {
             btn.disabled = false;
-            btn.textContent = 'Appeal All Found Items';
+            btn.textContent = 'Appeal All Valid Items';
         }
     }
 
-    // UI Injection
     let attempts = 0;
     const interval = setInterval(() => {
         attempts++;
@@ -378,13 +499,11 @@
             const el = document.querySelector(sel);
             if (el && !document.getElementById('mass-appeal-container')) {
                 addAppealUI(el);
+                loadRemoteMessages(); // preload default messages in the background
                 clearInterval(interval);
                 return;
             }
         }
-        if (attempts > 30) {
-            clearInterval(interval);
-            addAppealUI(document.body);
-        }
+        if (attempts > 30) clearInterval(interval);
     }, 600);
 })();

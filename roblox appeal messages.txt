@@ -9,3 +9,8 @@ This asset does not match the moderation category it was flagged under and shoul
 This asset was falsely flagged under an incorrect moderation category. The system has misinterpreted the contextual layout which functions strictly as a protective/compliance asset. Please re-evaluate the primary layer.
 Based on the content I believe the review outcome may not accurately reflect the asset i respectfully request another review
 I demand a manual review of this moderation action you clod.
+This asset has been incorrectly flagged by the automated moderation system. Upon review, it complies with all Roblox Community Standards. I request a manual human review to correct this error.
+This moderation action appears to be a false positive resulting from automated detection. The asset is compliant with policy and does not contain any prohibited content. Requesting a secondary manual assessment.
+I am requesting a manual review of this asset as it was incorrectly flagged. The content is fully compliant with Roblox policies and does not violate the category specified in the notification.
+It appears that the automated system has misidentified the intent behind this asset. I am confident that a manual review will confirm it is within policy guidelines. Please re-evaluate this decision.
+I have reviewed the guidelines and verified that this asset remains in full compliance. Please conduct a manual review to rectify this automated moderation error.
